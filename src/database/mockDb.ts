@@ -60,7 +60,19 @@ export interface MockDatabaseSchema {
   runbooks: Runbook[];
 }
 
-const dbPath = path.join(__dirname, 'mockData.json');
+const getDbPath = (): string => {
+  const paths = [
+    path.join(process.cwd(), 'src', 'database', 'mockData.json'),
+    path.join(process.cwd(), 'database', 'mockData.json'),
+    path.join(__dirname, 'mockData.json'),
+    path.join(__dirname, '..', 'database', 'mockData.json')
+  ];
+  for (const p of paths) {
+    if (fs.existsSync(p)) return p;
+  }
+  return paths[0];
+};
+const dbPath = getDbPath();
 
 class MockDatabase {
   private data!: MockDatabaseSchema;

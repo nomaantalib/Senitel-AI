@@ -112,12 +112,32 @@ document.addEventListener('DOMContentLoaded', () => {
         githubRepoInput.disabled = true;
         githubConnectBtn.style.display = 'none';
       } else {
-        githubConnectionMsg.innerHTML = `<span class="text-red"><i class="fa-solid fa-circle-xmark"></i> Failed to connect: Repository not found or limits exceeded (${response.status}).</span>`;
+        githubConnectionMsg.innerHTML = `
+          <span class="text-red"><i class="fa-solid fa-circle-xmark"></i> Verification failed (limits exceeded or private repo).</span><br>
+          <button type="button" id="github-force-btn" class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem; margin-top: 6px;">Connect Anyway</button>
+        `;
         githubConnectBtn.disabled = false;
+
+        document.getElementById('github-force-btn')?.addEventListener('click', () => {
+          connectedRepo = repoVal;
+          updateGitStatusUI();
+          githubRepoInput.disabled = true;
+          githubConnectBtn.style.display = 'none';
+        });
       }
     } catch (err) {
-      githubConnectionMsg.innerHTML = `<span class="text-red">Network error connecting to GitHub: ${err.message}</span>`;
+      githubConnectionMsg.innerHTML = `
+        <span class="text-red">Connection error: ${err.message}</span><br>
+        <button type="button" id="github-force-btn-err" class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.75rem; margin-top: 6px;">Connect Anyway</button>
+      `;
       githubConnectBtn.disabled = false;
+
+      document.getElementById('github-force-btn-err')?.addEventListener('click', () => {
+        connectedRepo = repoVal;
+        updateGitStatusUI();
+        githubRepoInput.disabled = true;
+        githubConnectBtn.style.display = 'none';
+      });
     }
   });
 

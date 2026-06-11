@@ -91,7 +91,19 @@ async function seedDatabase() {
     if (incidentsCount === 0 || releasesCount === 0 || deploymentsCount === 0) {
       console.log('[MongoDB] Empty collections detected, loading seed data from mockData.json...');
       
-      const seedFile = path.join(__dirname, 'mockData.json');
+      const getSeedFile = (): string => {
+        const paths = [
+          path.join(process.cwd(), 'src', 'database', 'mockData.json'),
+          path.join(process.cwd(), 'database', 'mockData.json'),
+          path.join(__dirname, 'mockData.json'),
+          path.join(__dirname, '..', 'database', 'mockData.json')
+        ];
+        for (const p of paths) {
+          if (fs.existsSync(p)) return p;
+        }
+        return paths[0];
+      };
+      const seedFile = getSeedFile();
       if (fs.existsSync(seedFile)) {
         const raw = fs.readFileSync(seedFile, 'utf-8');
         const parsed = JSON.parse(raw);

@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 import { db } from './database/mockDb';
 import { RiskEngine } from './utils/helpers';
 import { GeminiService } from './ai/geminiService';
@@ -23,7 +24,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve static files from the public directory
+// Serve static files from the frontend build and public fallback
+app.use(express.static(path.join(process.cwd(), 'frontend', 'dist')));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, '../public'))); // Fallback for tsc dist pathing
 
@@ -392,15 +394,19 @@ app.post('/api/slack-command', (req, res) => {
   });
 });
 
-// Serve the console.html dashboard page
-app.get('/console', (req, res) => {
-  res.sendFile(path.join(process.cwd(), 'public', 'console.html'));
-});
+// Serve the main single page app (SPA) HTML template
+const serveIndex = (req: express.Request, res: express.Response) => {
+  const reactIndex = path.join(process.cwd(), 'frontend', 'dist', 'index.html');
+  if (fs.existsSync(reactIndex)) {
+    res.sendFile(reactIndex);
+  } else {
+    // Fallback if frontend has not been compiled yet
+    res.sendFile(path.join(process.cwd(), 'public', 'index.html'));
+  }
+};
 
-// Serve the index.html landing page for all other requests
-app.get('*', (req, res) => {
-  res.sendFile(path.join(process.cwd(), 'public', 'index.html'));
-});
+app.get('/console', serveIndex);
+app.get('*', serveIndex);
 
 // Connect to MongoDB Atlas first, then start server
 connectMongo().then(() => {
