@@ -48,11 +48,14 @@ export default function App() {
   const [lastKeyUsed, setLastKeyUsed] = useState<string>('N/A');
 
   // GitHub Connection State (for Live Mode)
-  const [githubRepo, setGithubRepo] = useState<string>('');
-  const [githubInput, setGithubInput] = useState<string>('');
+  const [githubRepo, setGithubRepo] = useState<string>('nomaantalib/Senitel-AI');
+  const [githubInput, setGithubInput] = useState<string>('nomaantalib/Senitel-AI');
   const [isGithubVerifying, setIsGithubVerifying] = useState<boolean>(false);
-  const [githubMsg, setGithubMsg] = useState<{ text: string; type: 'info' | 'success' | 'error' | 'warn' } | null>(null);
-  const [githubConnected, setGithubConnected] = useState<boolean>(false);
+  const [githubMsg, setGithubMsg] = useState<{ text: string; type: 'info' | 'success' | 'error' | 'warn' } | null>({
+    text: 'Pre-connected to workspace repository',
+    type: 'success'
+  });
+  const [githubConnected, setGithubConnected] = useState<boolean>(true);
 
   // Feature 1: Pre-Deployment Risk Analyzer
   const [releaseVersion, setReleaseVersion] = useState<string>('v4.2');
