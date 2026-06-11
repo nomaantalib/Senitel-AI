@@ -394,12 +394,12 @@ app.post('/api/slack-command', (req, res) => {
 
 // Serve the console.html dashboard page
 app.get('/console', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'console.html'));
+  res.sendFile(path.join(process.cwd(), 'public', 'console.html'));
 });
 
 // Serve the index.html landing page for all other requests
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  res.sendFile(path.join(process.cwd(), 'public', 'index.html'));
 });
 
 // Connect to MongoDB Atlas first, then start server
