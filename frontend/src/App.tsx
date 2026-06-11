@@ -220,12 +220,12 @@ export default function App() {
         setGithubMsg({ text: `Connected successfully to ${repoVal}`, type: 'success' });
       } else {
         setGithubMsg({
-          text: 'Verification failed (limits exceeded or private repo).',
+          text: `Verification failed (status ${response.status} - repository not found or private). Click "Force Connect" to proceed anyway.`,
           type: 'error'
         });
       }
     } catch (err: any) {
-      setGithubMsg({ text: `Connection error: ${err.message}`, type: 'error' });
+      setGithubMsg({ text: `Connection error: ${err.message}. Click "Force Connect" to proceed anyway.`, type: 'error' });
     } finally {
       setIsGithubVerifying(false);
     }
@@ -307,6 +307,10 @@ export default function App() {
       setAnalyzerLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] Pre-deployment audit completed. Risk Score: ${data.riskScore}%`]);
     } catch (err: any) {
       setAnalyzerLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [ERROR] Failed to run audit: ${err.message}`]);
+      setRiskReport(`### 🚨 Pre-Deployment Audit Failed\n\n**Reason:** ${err.message || 'Connection Timed Out'}\n\nUnable to establish communication with the Sentinel AI analysis engine. \n- Please verify that your backend Express server is running on port 3000.\n- Check your internet connection.\n- Ensure your API credentials are valid.`);
+      setRecommendation('Audit Failed');
+      setRiskScore(null);
+      setRiskBadge({ text: 'Error', className: 'badge badge-red' });
     } finally {
       setIsAnalyzing(false);
     }
@@ -350,6 +354,7 @@ export default function App() {
       updateMetaInfo(data.aiMeta);
     } catch (err: any) {
       setTimelineSteps([{ type: 'failed-step', content: `Autopsy failed: ${err.message}` }]);
+      setOutageAutopsy(`### 🚨 Chronology Reconstruction Failed\n\n**Reason:** ${err.message || 'Connection Timed Out'}\n\nCould not reconstruct the timeline. Please verify your connection to the Express server.`);
     } finally {
       setIsReconstructing(false);
     }
@@ -375,7 +380,7 @@ export default function App() {
       setAdviceReport(data.advice);
       updateMetaInfo(data.aiMeta);
     } catch (err: any) {
-      setAdviceReport(`Error loading release strategy: ${err.message}`);
+      setAdviceReport(`### 🚨 Advice Consultation Failed\n\n**Reason:** ${err.message || 'Connection Timed Out'}\n\nCould not fetch release advice recommendations.`);
     } finally {
       setIsFetchingAdvice(false);
     }
@@ -405,7 +410,7 @@ export default function App() {
       setRcaReport(data.investigation);
       updateMetaInfo(data.aiMeta);
     } catch (err: any) {
-      setRcaReport(`Investigation scan failed: ${err.message}`);
+      setRcaReport(`### 🚨 Anomaly Scan Failed\n\n**Reason:** ${err.message || 'Connection Timed Out'}\n\nCould not investigate Microservice health telemetry.`);
     } finally {
       setIsScanningRca(false);
     }
@@ -1280,21 +1285,24 @@ export default function App() {
                     <div className="card-body">
                       <div className="config-section">
                         <h4>Gemini API Configuration</h4>
-                        <div className="form-group" style={{ marginTop: '12px' }}>
-                          <label>Your Gemini API Key</label>
-                          <input
-                            type="password"
-                            value={userApiKey}
-                            onChange={(e) => setUserApiKey(e.target.value)}
-                            placeholder="Enter key (Optionally leaves blank to trigger Fallback API Key)"
-                          />
-                          <small className="helper-text" style={{ display: 'block', marginTop: '6px' }}>
-                            <i className="fa-solid fa-circle-exclamation text-yellow"></i> Leave blank to use our integrated Hackathon Fallback API Key.
-                          </small>
-                          <a href="https://aistudio.google.com/app/apikey" target="_blank" className="ai-studio-link" rel="noreferrer" style={{ display: 'block', marginTop: '8px', color: '#c084fc', textDecoration: 'none' }}>
-                            <i className="fa-solid fa-arrow-up-right-from-square"></i> Get Gemini API Key on Google AI Studio
-                          </a>
-                        </div>
+                        <form onSubmit={(e) => e.preventDefault()}>
+                          <div className="form-group" style={{ marginTop: '12px' }}>
+                            <label>Your Gemini API Key</label>
+                            <input
+                              type="password"
+                              value={userApiKey}
+                              onChange={(e) => setUserApiKey(e.target.value)}
+                              placeholder="Enter key (Optionally leaves blank to trigger Fallback API Key)"
+                              autoComplete="current-password"
+                            />
+                            <small className="helper-text" style={{ display: 'block', marginTop: '6px' }}>
+                              <i className="fa-solid fa-circle-exclamation text-yellow"></i> Leave blank to use our integrated Hackathon Fallback API Key.
+                            </small>
+                            <a href="https://aistudio.google.com/app/apikey" target="_blank" className="ai-studio-link" rel="noreferrer" style={{ display: 'block', marginTop: '8px', color: '#c084fc', textDecoration: 'none' }}>
+                              <i className="fa-solid fa-arrow-up-right-from-square"></i> Get Gemini API Key on Google AI Studio
+                            </a>
+                          </div>
+                        </form>
                       </div>
 
                       <div className="console-divider"></div>
