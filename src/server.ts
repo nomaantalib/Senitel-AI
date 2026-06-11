@@ -392,6 +392,11 @@ app.post('/api/slack-command', (req, res) => {
   });
 });
 
+// Serve the console.html dashboard page
+app.get('/console', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'console.html'));
+});
+
 // Serve the index.html landing page for all other requests
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
