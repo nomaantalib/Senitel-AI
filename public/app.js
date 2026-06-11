@@ -16,10 +16,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const modeToggle = document.getElementById('mode-toggle');
   const userApiKeyInput = document.getElementById('user-api-key');
   const modelStatusIndicator = document.getElementById('model-status-indicator');
+  const githubRepoGroup = document.getElementById('github-repo-group');
 
   // Diagnostics DOM
   const diagLastModel = document.getElementById('diag-last-model');
   const diagLastKey = document.getElementById('diag-last-key');
+
+  // Show/Hide GitHub field based on Mode
+  function toggleModeFields() {
+    const isDemo = modeToggle.checked; // checked = demo, unchecked = live
+    if (githubRepoGroup) {
+      if (isDemo) {
+        githubRepoGroup.classList.add('hidden');
+      } else {
+        githubRepoGroup.classList.remove('hidden');
+      }
+    }
+  }
+  modeToggle?.addEventListener('change', toggleModeFields);
+  toggleModeFields(); // Run on startup
 
   // -------------------------------------------------------------
   // HERO LOG FEED SIMULATOR
@@ -131,6 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
     e.preventDefault();
     const version = document.getElementById('release-version').value.trim();
     const service = document.getElementById('target-service').value;
+    const githubRepo = document.getElementById('github-repo').value.trim();
     const mode = getMode();
     const apiKey = getApiKey();
 
@@ -160,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const response = await fetch('/api/analyze-release', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ version, service, mode, apiKey })
+        body: JSON.stringify({ version, service, mode, apiKey, githubRepo })
       });
       const data = await response.json();
 

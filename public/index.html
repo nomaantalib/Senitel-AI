@@ -80,6 +80,69 @@
   </section>
 
   <!-- ========================================== -->
+  <!-- FEATURES SECTION -->
+  <!-- ========================================== -->
+  <section id="features" class="landing-section">
+    <div class="landing-container">
+      <h2 class="section-title">Core <span class="text-gradient">Guardian Features</span></h2>
+      <p class="section-subtitle">Preventing outages by proactively validating code and infrastructure before deployment.</p>
+      
+      <div class="features-grid">
+        <div class="glass-card feature-card">
+          <i class="fa-solid fa-gauge-high icon-gradient"></i>
+          <h3>Risk Analyzer</h3>
+          <p>Scans Git branches, commits, active telemetry loads, and open Jira bugs to compute a predictive failure score before code is pushed.</p>
+        </div>
+        <div class="glass-card feature-card">
+          <i class="fa-solid fa-clock-rotate-left icon-gradient"></i>
+          <h3>Incident Time Machine</h3>
+          <p>Reconstructs step-by-step chronology logs of previous production outages to audit cascading failure triggers and avoid recurrence.</p>
+        </div>
+        <div class="glass-card feature-card">
+          <i class="fa-solid fa-wand-magic-sparkles icon-gradient"></i>
+          <h3>Canary Release Advisor</h3>
+          <p>Generates optimal traffic splits (10% -> 25% -> 50% -> 100%) and safety verification checks tailored to the active service health.</p>
+        </div>
+        <div class="glass-card feature-card">
+          <i class="fa-solid fa-magnifying-glass-chart icon-gradient"></i>
+          <h3>RCA Diagnostics</h3>
+          <p>Correlates infrastructure anomalies in Prometheus logs with open code bugs using RAG search over incident runbooks.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================== -->
+  <!-- WORKING / HOW IT WORKS SECTION -->
+  <!-- ========================================== -->
+  <section id="architecture" class="landing-section bg-alt">
+    <div class="landing-container">
+      <h2 class="section-title">How It <span class="text-gradient">Works</span></h2>
+      <p class="section-subtitle">Behind the scenes of Sentinel's predictive decision-making engine.</p>
+      
+      <div class="working-flow">
+        <div class="flow-step-card">
+          <div class="step-badge">01</div>
+          <h4>Context Fetching</h4>
+          <p>Sentinel queries GitHub (recent commit diffs), Jira (active blocker tickets), and Prometheus (CPU/Memory metrics).</p>
+        </div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+        <div class="flow-step-card">
+          <div class="step-badge">02</div>
+          <h4>RAG Runbook Search</h4>
+          <p>The incident details are cross-referenced with your postmortem database (ChromaDB) to fetch similar failure templates.</p>
+        </div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-right"></i></div>
+        <div class="flow-step-card">
+          <div class="step-badge">03</div>
+          <h4>Gemini Guardrail Synthesis</h4>
+          <p>The context payload is processed by the Gemini model queue, auto-rotating to prevent free-tier limits and fallback key blockers.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========================================== -->
   <!-- MAIN DASHBOARD CONSOLE (HIDDEN BY DEFAULT) -->
   <!-- ========================================== -->
   <main id="app-console" class="console-wrapper hidden">
@@ -167,8 +230,13 @@
               <div class="card-body">
                 <form id="analyze-form" class="dashboard-form">
                   <div class="form-group">
-                    <label for="release-version">Release Version Tag</label>
+                    <label for="release-version">Release Version Tag / Commit Hash</label>
                     <input type="text" id="release-version" value="v4.2" placeholder="e.g., v4.2" required>
+                  </div>
+                  <div class="form-group" id="github-repo-group">
+                    <label for="github-repo">GitHub Repository Owner/Name (Live Mode)</label>
+                    <input type="text" id="github-repo" value="nomaantalib/Senitel-AI" placeholder="e.g., owner/repo">
+                    <small class="helper-text"><i class="fa-brands fa-github text-yellow"></i> Enter a public repository to fetch actual live commits on scan.</small>
                   </div>
                   <div class="form-group">
                     <label for="target-service">Target Microservice</label>
@@ -463,7 +531,12 @@
                   <div class="form-group">
                     <label for="user-api-key">Your Gemini API Key</label>
                     <input type="password" id="user-api-key" placeholder="Enter key (Optionally leaves blank to trigger Fallback API Key)">
-                    <small class="helper-text"><i class="fa-solid fa-circle-exclamation text-yellow"></i> Leave blank to use our integrated Hackathon Fallback API Key.</small>
+                    <small class="helper-text">
+                      <i class="fa-solid fa-circle-exclamation text-yellow"></i> Leave blank to use our integrated Hackathon Fallback API Key.
+                    </small>
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank" class="ai-studio-link">
+                      <i class="fa-solid fa-arrow-up-right-from-square"></i> Get Gemini API Key on Google AI Studio
+                    </a>
                   </div>
                 </div>
 

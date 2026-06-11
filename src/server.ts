@@ -58,15 +58,39 @@ app.get('/api/config', (req, res) => {
  * Endpoint to analyze a release
  */
 app.post('/api/analyze-release', async (req, res) => {
-  const { version, service = 'checkout-service', mode = 'demo', apiKey } = req.body;
+  const { version, service = 'checkout-service', mode = 'demo', apiKey, githubRepo } = req.body;
 
   const isDemo = mode === 'demo';
   const selectedService = service || 'checkout-service';
 
-  // 1. Calculate risk score using the risk engine
+  // 1. Fetch live commits from GitHub if in live mode
+  let gitCommitContext = '';
+  let fetchedCommitsCount = 0;
+  if (!isDemo && githubRepo) {
+    try {
+      console.log(`[Sentinel Proxy] Querying GitHub API for repository commits: ${githubRepo}`);
+      const gitResponse = await fetch(`https://api.github.com/repos/${githubRepo}/commits`, {
+        headers: { 'User-Agent': 'sentinel-ai-devops-guardian' }
+      });
+      if (gitResponse.ok) {
+        const commits = await gitResponse.json() as any[];
+        fetchedCommitsCount = Math.min(commits.length, 5);
+        const lastCommits = commits.slice(0, 5).map(c => 
+          `* Commit by ${c.commit.author?.name || 'author'}: "${c.commit.message}" (Hash: ${c.sha?.slice(0, 7)})`
+        ).join('\n');
+        gitCommitContext = `\nRecent GitHub commits found in repository "${githubRepo}":\n${lastCommits}`;
+      } else {
+        gitCommitContext = `\n[GitHub API Warning] Could not load commits. Status: ${gitResponse.statusText}`;
+      }
+    } catch (err: any) {
+      gitCommitContext = `\n[GitHub Connection Warning] Failed to query API: ${err.message}`;
+    }
+  }
+
+  // 2. Calculate risk score using the risk engine
   const riskAnalysis = RiskEngine.calculateRisk(selectedService, isDemo);
 
-  // 2. Draft prompt for Gemini
+  // 3. Draft prompt for Gemini
   const systemPrompt = `You are Sentinel AI, the Predictive DevOps & Deployment Guardian. 
 Analyze the release metrics and write a professional, high-impact release risk summary.
 Structure your response in markdown format with sections:
@@ -75,7 +99,7 @@ Structure your response in markdown format with sections:
 - Actionable Recommendation`;
 
   const userPrompt = `
-Analyze release version: ${version} for service: ${selectedService}.
+Analyze release version: ${version} for service: ${selectedService}.${gitCommitContext}
 Telemetry and health details:
 - Computed Total Risk Score: ${riskAnalysis.totalRisk}%
 - Memory Risk Factor: ${riskAnalysis.memoryRisk}/25
@@ -87,12 +111,14 @@ ${riskAnalysis.reasons.map(r => `  * ${r}`).join('\n')}
 
 Please generate a deployment guard report based on this telemetry. Explain why the risk score is at ${riskAnalysis.totalRisk}% and outline the best path forward (e.g. Canary strategy, delay deployment, or normal rolling).`;
 
-  // 3. Request analysis from Gemini (with fallback handling)
+  // 4. Request analysis from Gemini (with fallback handling)
   const aiResult = await GeminiService.generateContent(userPrompt, systemPrompt, apiKey);
 
   res.json({
     version,
     service: selectedService,
+    githubRepo: githubRepo || 'N/A',
+    commitsCount: fetchedCommitsCount,
     riskScore: riskAnalysis.totalRisk,
     breakdown: {
       memoryRisk: riskAnalysis.memoryRisk,

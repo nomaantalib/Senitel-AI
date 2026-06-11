@@ -1316,3 +1316,124 @@ body.dark-theme {
     grid-template-columns: 1fr;
   }
 }
+
+/* ==========================================
+   LANDING SECTIONS (FEATURES & ARCHITECTURE)
+   ========================================== */
+.landing-section {
+  padding: 80px 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.landing-section.bg-alt {
+  background: rgba(255, 255, 255, 0.01);
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border-color);
+  margin-top: 40px;
+  margin-bottom: 40px;
+}
+.landing-container {
+  width: 100%;
+}
+.section-title {
+  font-family: var(--font-title);
+  font-size: 2.2rem;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 12px;
+}
+.section-subtitle {
+  text-align: center;
+  color: var(--text-muted);
+  max-width: 600px;
+  margin: 0 auto 50px auto;
+  font-size: 1.05rem;
+}
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 24px;
+}
+.feature-card {
+  padding: 30px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  transition: transform var(--transition-speed) ease;
+}
+.feature-card:hover {
+  transform: translateY(-5px);
+}
+.feature-card i {
+  font-size: 2.2rem;
+}
+.icon-gradient {
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.working-flow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.flow-step-card {
+  flex: 1;
+  min-width: 250px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: 24px;
+  position: relative;
+}
+.step-badge {
+  position: absolute;
+  top: -12px;
+  left: 20px;
+  background: var(--primary-gradient);
+  color: white;
+  font-family: var(--font-title);
+  font-weight: 800;
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  border-radius: 50px;
+}
+.flow-step-card h4 {
+  font-family: var(--font-title);
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+  margin-top: 6px;
+}
+.flow-step-card p {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+.flow-arrow {
+  color: #a855f7;
+  font-size: 1.5rem;
+}
+
+/* AI Studio redirection link */
+.ai-studio-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: #a855f7;
+  text-decoration: none;
+  font-weight: 600;
+  margin-top: 8px;
+  transition: color var(--transition-speed);
+}
+.ai-studio-link:hover {
+  color: #c084fc;
+}
+
+#github-repo-group {
+  transition: all 0.3s ease;
+}
+
