@@ -11,6 +11,7 @@ services:
       - key: FALLBACK_GEMINI_API_KEY
         value: AQ.Ab8RN6LSUm4etQfdxuGi49NfCkW8biaf8aefoKCPnJhhv6Gv3w
       - key: MONGO_URI
-        value: mongodb+srv://Senitel:Cba4321@cluster0.puwaaac.mongodb.net/
+        sync: false
+        placeholder: "Enter your MongoDB Atlas Connection String (e.g. mongodb+srv://...)"
       - key: GEMINI_API_KEY
         sync: false
