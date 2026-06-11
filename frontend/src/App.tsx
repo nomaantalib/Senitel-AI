@@ -47,15 +47,27 @@ export default function App() {
   const [lastModel, setLastModel] = useState<string>('N/A');
   const [lastKeyUsed, setLastKeyUsed] = useState<string>('N/A');
 
-  // GitHub Connection State (for Live Mode)
-  const [githubRepo, setGithubRepo] = useState<string>('nomaantalib/Senitel-AI');
-  const [githubInput, setGithubInput] = useState<string>('nomaantalib/Senitel-AI');
+  // GitHub Connection State (for Live Mode) - Load from localStorage or fallback to default
+  const getInitialRepo = () => {
+    const saved = localStorage.getItem('sentinel_connected_repo');
+    if (saved !== null) return saved;
+    return 'nomaantalib/Senitel-AI';
+  };
+
+  const getInitialConnected = () => {
+    const saved = localStorage.getItem('sentinel_github_connected');
+    if (saved !== null) return saved === 'true';
+    return true; // default pre-connected
+  };
+
+  const [githubRepo, setGithubRepo] = useState<string>(getInitialRepo);
+  const [githubInput, setGithubInput] = useState<string>(getInitialRepo);
   const [isGithubVerifying, setIsGithubVerifying] = useState<boolean>(false);
   const [githubMsg, setGithubMsg] = useState<{ text: string; type: 'info' | 'success' | 'error' | 'warn' } | null>({
-    text: 'Pre-connected to workspace repository',
-    type: 'success'
+    text: getInitialConnected() ? 'Connected to repository' : 'Disconnected',
+    type: getInitialConnected() ? 'success' : 'warn'
   });
-  const [githubConnected, setGithubConnected] = useState<boolean>(true);
+  const [githubConnected, setGithubConnected] = useState<boolean>(getInitialConnected);
 
   // Feature 1: Pre-Deployment Risk Analyzer
   const [releaseVersion, setReleaseVersion] = useState<string>('v4.2');
@@ -218,6 +230,8 @@ export default function App() {
         setGithubRepo(repoVal);
         setGithubConnected(true);
         setGithubMsg({ text: `Connected successfully to ${repoVal}`, type: 'success' });
+        localStorage.setItem('sentinel_connected_repo', repoVal);
+        localStorage.setItem('sentinel_github_connected', 'true');
       } else {
         setGithubMsg({
           text: `Verification failed (status ${response.status} - repository not found or private). Click "Force Connect" to proceed anyway.`,
@@ -236,6 +250,8 @@ export default function App() {
     setGithubRepo(repoVal);
     setGithubConnected(true);
     setGithubMsg({ text: `Connected successfully (Forced) to ${repoVal}`, type: 'success' });
+    localStorage.setItem('sentinel_connected_repo', repoVal);
+    localStorage.setItem('sentinel_github_connected', 'true');
   };
 
   const handleDisconnectGithub = () => {
@@ -243,6 +259,8 @@ export default function App() {
     setGithubConnected(false);
     setGithubInput('');
     setGithubMsg(null);
+    localStorage.removeItem('sentinel_connected_repo');
+    localStorage.removeItem('sentinel_github_connected');
   };
 
   // Feature 1 Audit function
