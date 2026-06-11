@@ -507,4 +507,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     return html;
   }
+
+  // Fetch fallback credentials from backend config
+  async function fetchConfig() {
+    try {
+      const response = await fetch('/api/config');
+      if (response.ok) {
+        const data = await response.json();
+        const display = document.getElementById('fallback-key-display');
+        if (display && data.fallbackApiKey) {
+          display.textContent = data.fallbackApiKey;
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch configuration details:', err);
+    }
+  }
+  fetchConfig();
 });
+

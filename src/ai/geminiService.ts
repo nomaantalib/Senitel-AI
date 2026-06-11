@@ -1,7 +1,7 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-const DEFAULT_FALLBACK_KEY = 'AQ.Ab8RN6LSUm4etQfdxuGi49NfCkW8biaf8aefoKCPnJhhv6Gv3w';
+const DEFAULT_FALLBACK_KEY = process.env.FALLBACK_GEMINI_API_KEY || '';
 
 export interface GenerateResponse {
   text: string;

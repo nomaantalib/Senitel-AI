@@ -35,6 +35,15 @@ app.get('/api/metrics', (req, res) => {
 });
 
 /**
+ * Endpoint to retrieve system fallback credentials
+ */
+app.get('/api/config', (req, res) => {
+  res.json({
+    fallbackApiKey: process.env.FALLBACK_GEMINI_API_KEY || ''
+  });
+});
+
+/**
  * Endpoint to analyze a release
  */
 app.post('/api/analyze-release', async (req, res) => {
