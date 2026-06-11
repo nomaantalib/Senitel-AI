@@ -513,6 +513,13 @@ document.addEventListener('DOMContentLoaded', () => {
     return html;
   }
 
+  // Set Live Mode if URL param live=true is set
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('live') === 'true' && modeToggle) {
+    modeToggle.checked = false; // demo is checked, live is unchecked
+    toggleModeFields();
+  }
+
   // Fetch fallback credentials from backend config
   async function fetchConfig() {
     try {

@@ -528,9 +528,9 @@ export default function App() {
                   <button onClick={() => navigateTo('console')} className="btn btn-primary btn-glow">
                     Launch Dashboard Console <i className="fa-solid fa-arrow-right"></i>
                   </button>
-                  <a href="https://github.com/nomaantalib/Senitel-AI" target="_blank" className="btn btn-outline" rel="noreferrer">
-                    <i className="fa-brands fa-github"></i> Repository
-                  </a>
+                  <button onClick={() => { navigateTo('console'); setIsDemo(false); setActiveTab('risk-analyzer'); }} className="btn btn-outline">
+                    <i className="fa-brands fa-github"></i> Connect Repository
+                  </button>
                 </div>
               </div>
 

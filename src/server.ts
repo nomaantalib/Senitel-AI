@@ -394,19 +394,25 @@ app.post('/api/slack-command', (req, res) => {
   });
 });
 
-// Serve the main single page app (SPA) HTML template
-const serveIndex = (req: express.Request, res: express.Response) => {
+// Serve the console page (React built version or public legacy fallback)
+app.get('/console', (req, res) => {
   const reactIndex = path.join(process.cwd(), 'frontend', 'dist', 'index.html');
   if (fs.existsSync(reactIndex)) {
     res.sendFile(reactIndex);
   } else {
-    // Fallback if frontend has not been compiled yet
+    res.sendFile(path.join(process.cwd(), 'public', 'console.html'));
+  }
+});
+
+// Serve the index/wildcard page (React built version or public legacy fallback)
+app.get('*', (req, res) => {
+  const reactIndex = path.join(process.cwd(), 'frontend', 'dist', 'index.html');
+  if (fs.existsSync(reactIndex)) {
+    res.sendFile(reactIndex);
+  } else {
     res.sendFile(path.join(process.cwd(), 'public', 'index.html'));
   }
-};
-
-app.get('/console', serveIndex);
-app.get('*', serveIndex);
+});
 
 // Connect to MongoDB Atlas first, then start server
 connectMongo().then(() => {
