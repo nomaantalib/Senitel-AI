@@ -1,4 +1,5 @@
 import * as dotenv from 'dotenv';
+import { SecurityMasker } from '../utils/masking';
 dotenv.config();
 
 const DEFAULT_FALLBACK_KEY = process.env.FALLBACK_GEMINI_API_KEY || '';
@@ -28,6 +29,10 @@ export class GeminiService {
   ): Promise<GenerateResponse> {
     const primaryKey = customApiKey || process.env.GEMINI_API_KEY || '';
     
+    // Mask prompts before transmitting to LLM endpoints
+    const maskedPrompt = SecurityMasker.maskData(prompt);
+    const maskedSystemPrompt = SecurityMasker.maskData(systemPrompt);
+    
     // Ordered list of keys to try: primary (if exists), then fallback
     const keysToTry = [primaryKey, DEFAULT_FALLBACK_KEY].filter(k => !!k);
     
@@ -42,11 +47,12 @@ export class GeminiService {
       for (const model of this.models) {
         try {
           console.log(`[GeminiService] Attempting LLM call using model: ${model} with ${keyLabel}`);
-          const response = await this.callGeminiApi(model, prompt, systemPrompt, key);
+          const response = await this.callGeminiApi(model, maskedPrompt, maskedSystemPrompt, key);
           
           if (response) {
+            // Mask response text to sanitize any leaked system paths/keys
             return {
-              text: response,
+              text: SecurityMasker.maskData(response),
               modelUsed: model,
               keyUsed: isFallback ? 'Fallback Key (...f8aefo)' : 'Primary Configured Key'
             };

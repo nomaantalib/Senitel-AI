@@ -5,6 +5,7 @@ import { db } from './database/mockDb';
 import { RiskEngine } from './utils/helpers';
 import { GeminiService } from './ai/geminiService';
 import { connectMongo } from './database/mongo';
+import { SecurityMasker } from './utils/masking';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,6 +13,15 @@ const PORT = process.env.PORT || 3000;
 // Enable CORS and JSON parsing
 app.use(cors());
 app.use(express.json());
+
+// Proxy Request & Telemetry Logging Middleware
+app.use((req, res, next) => {
+  const maskedUrl = SecurityMasker.maskData(req.originalUrl);
+  const bodyStr = Object.keys(req.body).length ? JSON.stringify(req.body) : '';
+  const maskedBody = SecurityMasker.maskData(bodyStr);
+  console.log(`[Sentinel Proxy] ${req.method} ${maskedUrl} ${maskedBody ? `| Payload: ${maskedBody}` : ''}`);
+  next();
+});
 
 // Serve static files from the public directory
 app.use(express.static(path.join(__dirname, 'public')));
