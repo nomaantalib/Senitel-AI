@@ -4,6 +4,7 @@ import path from 'path';
 import { db } from './database/mockDb';
 import { RiskEngine } from './utils/helpers';
 import { GeminiService } from './ai/geminiService';
+import { connectMongo } from './database/mongo';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -360,6 +361,9 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`[Sentinel Server] Started on http://localhost:${PORT}`);
+// Connect to MongoDB Atlas first, then start server
+connectMongo().then(() => {
+  app.listen(PORT, () => {
+    console.log(`[Sentinel Server] Started on http://localhost:${PORT}`);
+  });
 });
