@@ -1428,9 +1428,22 @@ html {
     display: none; /* Hide profile in mobile layout */
   }
 
+  .console-wrapper {
+    height: auto !important;
+    min-height: 100vh;
+    overflow: visible !important;
+  }
+  .console-body {
+    flex-direction: column;
+    height: auto !important;
+    overflow: visible !important;
+    flex: none !important;
+  }
   .console-content {
     padding: 16px;
-    overflow-y: visible; /* Let body container handle main scrolling */
+    height: auto !important;
+    overflow: visible !important;
+    flex: none !important;
   }
   .fill-grid-cell {
     min-height: auto;

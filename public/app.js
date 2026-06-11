@@ -69,13 +69,11 @@ document.addEventListener('DOMContentLoaded', () => {
   function showConsole() {
     heroSection.classList.add('hidden');
     appConsole.classList.remove('hidden');
-    document.body.style.overflow = 'hidden'; // Lock main scroll inside dashboard console
   }
 
   function showHero() {
     appConsole.classList.add('hidden');
     heroSection.classList.remove('hidden');
-    document.body.style.overflow = 'auto'; // Unlock main scroll
   }
 
   heroLaunchBtn?.addEventListener('click', showConsole);
