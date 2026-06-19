@@ -99,8 +99,7 @@ $$\text{Risk Score} = \text{Memory Load (25)} + \text{Jira Bugs (25)} + \text{Cl
 ### Rotation Queue & Hackathon Fallback
 To maximize uptime and handle API rate limits on free tiers:
 - **Model Rotation:** Sequential pipeline connection attempting `gemini-2.5-flash` → `gemini-1.5-flash` → `gemini-1.5-pro`.
-- **Integrated Fallback Key:** If no API key is specified, the server automatically injects the built-in backup key:
-  `AQ.Ab8RN6LSUm4etQfdxuGi49NfCkW8biaf8aefoKCPnJhhv6Gv3w`
+- **Integrated Fallback Key:** If no primary API key is specified, the server automatically injects the fallback API key configured in your environment variables.
 
 ---
 
@@ -143,8 +142,8 @@ sentinel-ai/
 Create a `.env` file in the root workspace folder:
 ```env
 PORT=3000
-MONGO_URI=mongodb+srv://Senitel:Cba4321@cluster0.puwaaac.mongodb.net/
-FALLBACK_GEMINI_API_KEY=AQ.Ab8RN6LSUm4etQfdxuGi49NfCkW8biaf8aefoKCPnJhhv6Gv3w
+MONGO_URI=your_mongodb_connection_string_here
+FALLBACK_GEMINI_API_KEY=your_fallback_gemini_api_key_here
 ```
 
 ### Installation & Execution

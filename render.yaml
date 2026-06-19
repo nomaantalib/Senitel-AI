@@ -9,7 +9,8 @@ services:
       - key: PORT
         value: 3000
       - key: FALLBACK_GEMINI_API_KEY
-        value: AQ.Ab8RN6LSUm4etQfdxuGi49NfCkW8biaf8aefoKCPnJhhv6Gv3w
+        sync: false
+        placeholder: "Enter your fallback Gemini API Key (e.g. AIzaSy...)"
       - key: MONGO_URI
         sync: false
         placeholder: "Enter your MongoDB Atlas Connection String (e.g. mongodb+srv://...)"
