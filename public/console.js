@@ -91,17 +91,38 @@ document.addEventListener('DOMContentLoaded', () => {
   modeToggle?.addEventListener('change', toggleModeFields);
   toggleModeFields(); // Initial call
 
+  // Toggle Gemini API Key Visibility
+  const toggleVisibilityBtn = document.getElementById('toggle-api-key-visibility');
+  const toggleVisibilityIcon = document.getElementById('toggle-api-key-icon');
+  toggleVisibilityBtn?.addEventListener('click', () => {
+    if (userApiKeyInput && userApiKeyInput.type === 'password') {
+      userApiKeyInput.type = 'text';
+      toggleVisibilityIcon?.classList.remove('fa-eye');
+      toggleVisibilityIcon?.classList.add('fa-eye-slash');
+    } else if (userApiKeyInput) {
+      userApiKeyInput.type = 'password';
+      toggleVisibilityIcon?.classList.remove('fa-eye-slash');
+      toggleVisibilityIcon?.classList.add('fa-eye');
+    }
+  });
+
   // -------------------------------------------------------------
   // GITHUB REPOSITORY CONNECTION ACTION
   // -------------------------------------------------------------
   githubConnectBtn?.addEventListener('click', async () => {
-    const repoVal = githubRepoInput.value.trim();
-    if (!repoVal) {
+    const rawRepo = githubRepoInput.value.trim();
+    if (!rawRepo) {
       githubConnectionMsg.innerHTML = '<span class="text-red">Please enter repository owner/name.</span>';
       return;
     }
 
-    githubConnectionMsg.innerHTML = '<span><i class="fa-solid fa-spinner fa-spin"></i> Locating repository...</span>';
+    // Sanitize repository input
+    let repoVal = rawRepo;
+    repoVal = repoVal.replace(/^(https?:\/\/)?(www\.)?github\.com\//i, '');
+    repoVal = repoVal.replace(/\.git$/i, '');
+    repoVal = repoVal.replace(/\/+$/, '');
+
+    githubConnectionMsg.innerHTML = `<span><i class="fa-solid fa-spinner fa-spin"></i> Locating repository: ${repoVal}...</span>`;
     githubConnectBtn.disabled = true;
 
     try {

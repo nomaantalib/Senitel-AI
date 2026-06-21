@@ -408,16 +408,21 @@
               <div class="card-body">
                 <div class="config-section">
                   <h4>Gemini API Configuration</h4>
-                  <div class="form-group">
+                  <form onsubmit="event.preventDefault();" class="form-group">
                     <label for="user-api-key">Your Gemini API Key</label>
-                    <input type="password" id="user-api-key" placeholder="Enter key (Optionally leaves blank to trigger Fallback API Key)">
+                    <div style="position: relative; display: flex; width: 100%;">
+                      <input type="password" id="user-api-key" placeholder="Enter key (Optionally leaves blank to trigger Fallback API Key)" autocomplete="new-password" style="padding-right: 40px; width: 100%;">
+                      <button type="button" id="toggle-api-key-visibility" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center;">
+                        <i class="fa-solid fa-eye" id="toggle-api-key-icon"></i>
+                      </button>
+                    </div>
                     <small class="helper-text">
                       <i class="fa-solid fa-circle-exclamation text-yellow"></i> Leave blank to use our integrated Hackathon Fallback API Key.
                     </small>
-                    <a href="https://aistudio.google.com/app/apikey" target="_blank" class="ai-studio-link">
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank" class="ai-studio-link" style="display: inline-block; margin-top: 8px;">
                       <i class="fa-solid fa-arrow-up-right-from-square"></i> Get Gemini API Key on Google AI Studio
                     </a>
-                  </div>
+                  </form>
                 </div>
 
                 <div class="console-divider"></div>
