@@ -25,6 +25,17 @@ interface MetricState {
   status: string;
 }
 
+interface DBIncident {
+  _id: string;
+  service: string;
+  date: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  rootCause: string;
+  timeline: string[];
+  resolution?: string;
+  similarOutagesCount?: number;
+}
+
 export default function App() {
   // Page routing state: 'landing' or 'console'
   const [currentPage, setCurrentPage] = useState<'landing' | 'console'>(
@@ -33,7 +44,7 @@ export default function App() {
 
   // Tab navigation state
   const [activeTab, setActiveTab] = useState<
-    'risk-analyzer' | 'time-machine' | 'release-advisor' | 'root-cause' | 'slack-simulator' | 'model-config'
+    'risk-analyzer' | 'time-machine' | 'release-advisor' | 'root-cause' | 'slack-simulator' | 'model-config' | 'telemetry-crud'
   >('risk-analyzer');
 
   // Mode Selection: Demo or Live
@@ -112,6 +123,21 @@ export default function App() {
   ]);
   const [isSlackResponding, setIsSlackResponding] = useState<boolean>(false);
 
+  // Feature 7: Incident & Telemetry CRUD Logs Radar state
+  const [dbIncidents, setDbIncidents] = useState<DBIncident[]>([]);
+  const [isFetchingIncidents, setIsFetchingIncidents] = useState<boolean>(false);
+  const [radarService, setRadarService] = useState<string>('checkout-service');
+  const [radarSeverity, setRadarSeverity] = useState<'critical' | 'high' | 'medium' | 'low'>('medium');
+  const [radarRootCause, setRadarRootCause] = useState<string>('');
+  const [radarResolution, setRadarResolution] = useState<string>('');
+  const [radarTimeline, setRadarTimeline] = useState<string>('');
+  const [isSavingIncident, setIsSavingIncident] = useState<boolean>(false);
+  const [crudEditMode, setCrudEditMode] = useState<boolean>(false);
+  const [currentEditId, setCurrentEditId] = useState<string>('');
+  const [selectedRadarId, setSelectedRadarId] = useState<string | null>(null);
+  const [radarReport, setRadarReport] = useState<string>('');
+  const [isScanningRadarReport, setIsScanningRadarReport] = useState<boolean>(false);
+
   const slackFeedEndRef = useRef<HTMLDivElement>(null);
   const logFeedIntervalRef = useRef<any>(null);
   const [landingLogs, setLandingLogs] = useState<Array<{ type: string; text: string; time: string }>>([
@@ -133,7 +159,7 @@ export default function App() {
     return () => window.removeEventListener('popstate', handleLocationChange);
   }, []);
 
-  // Fetch fallback key config on startup
+  // Fetch fallback key config and initial incident list on startup
   useEffect(() => {
     async function fetchConfig() {
       try {
@@ -150,6 +176,28 @@ export default function App() {
     }
     fetchConfig();
   }, []);
+
+  // Load database incidents when tab changes or currentPage changes
+  const fetchIncidents = async () => {
+    setIsFetchingIncidents(true);
+    try {
+      const response = await fetch('/api/incidents');
+      if (response.ok) {
+        const data = await response.json();
+        setDbIncidents(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch incidents list:', err);
+    } finally {
+      setIsFetchingIncidents(false);
+    }
+  };
+
+  useEffect(() => {
+    if (currentPage === 'console') {
+      fetchIncidents();
+    }
+  }, [currentPage, activeTab]);
 
   // Auto scroll Slack Simulator chat feed
   useEffect(() => {
@@ -492,6 +540,108 @@ export default function App() {
     }
   };
 
+  // Feature 7: CRUD Save/Edit/Delete Incident Log
+  const handleSaveIncident = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!radarRootCause.trim()) {
+      alert('Please enter incident log description/root cause.');
+      return;
+    }
+
+    setIsSavingIncident(true);
+    const timelineList = radarTimeline ? radarTimeline.split('\n').filter(t => t.trim()) : undefined;
+
+    const payload = {
+      service: radarService,
+      severity: radarSeverity,
+      rootCause: radarRootCause,
+      resolution: radarResolution,
+      timeline: timelineList
+    };
+
+    try {
+      let url = '/api/incidents';
+      let method = 'POST';
+      if (crudEditMode && currentEditId) {
+        url = `/api/incidents/${currentEditId}`;
+        method = 'PUT';
+      }
+
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        fetchIncidents();
+        // Reset form inputs
+        setRadarRootCause('');
+        setRadarResolution('');
+        setRadarTimeline('');
+        setCrudEditMode(false);
+        setCurrentEditId('');
+      } else {
+        alert('Server failed to commit log edits.');
+      }
+    } catch (err: any) {
+      alert(`Network error saving logs: ${err.message}`);
+    } finally {
+      setIsSavingIncident(false);
+    }
+  };
+
+  const handleEditIncidentClick = (inc: DBIncident) => {
+    setCrudEditMode(true);
+    setCurrentEditId(inc._id);
+    setRadarService(inc.service);
+    setRadarSeverity(inc.severity);
+    setRadarRootCause(inc.rootCause);
+    setRadarResolution(inc.resolution || '');
+    setRadarTimeline(inc.timeline ? inc.timeline.join('\n') : '');
+  };
+
+  const handleDeleteIncidentClick = async (id: string) => {
+    if (!confirm('Are you sure you want to permanently delete this telemetry incident?')) return;
+    try {
+      const response = await fetch(`/api/incidents/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        fetchIncidents();
+      } else {
+        alert('Server failed to delete incident log.');
+      }
+    } catch (err: any) {
+      alert(`Network error: ${err.message}`);
+    }
+  };
+
+  // AI Security Radar Scanner analysis
+  const handleAIClusterScan = async () => {
+    setIsScanningRadarReport(true);
+    setRadarReport('');
+    try {
+      const response = await fetch('/api/investigate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service: 'Incident DB Cluster Analysis',
+          apiKey: userApiKey.trim() || undefined
+        })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setRadarReport(data.investigation);
+        updateMetaInfo(data.aiMeta);
+      } else {
+        setRadarReport('Failed to compile cluster scanner report.');
+      }
+    } catch (err: any) {
+      setRadarReport(`Cluster scan timeout: ${err.message}`);
+    } finally {
+      setIsScanningRadarReport(false);
+    }
+  };
+
   // Helper to render basic markdown safely
   const renderMarkdown = (md: string) => {
     if (!md) return '';
@@ -518,6 +668,26 @@ export default function App() {
   // Radial score gauge geometry math
   const strokeDashoffset = riskScore !== null ? 314.16 * (1 - riskScore / 100) : 314.16;
   const strokeColor = riskScore !== null ? (riskScore > 70 ? 'var(--color-red)' : riskScore > 40 ? 'var(--color-yellow)' : 'var(--color-green)') : '#6366f1';
+
+  // Computed metrics for CRUD threat radar
+  const totalOutages = dbIncidents.length;
+  const criticalOutages = dbIncidents.filter(i => i.severity === 'critical').length;
+  const highOutages = dbIncidents.filter(i => i.severity === 'high').length;
+  
+  // Custom threat coordinates inside SVG radar scope
+  const getRadarCoordinates = (_id: string, severity: string, index: number) => {
+    // Generate semi-random angles/radius for targets
+    const seed = index * 45;
+    const angle = (seed * Math.PI) / 180;
+    let radius = 90; // outer circle (low)
+    if (severity === 'critical') radius = 30; // inner circle
+    else if (severity === 'high') radius = 50;
+    else if (severity === 'medium') radius = 70;
+
+    const cx = 100 + radius * Math.cos(angle);
+    const cy = 100 + radius * Math.sin(angle);
+    return { cx, cy };
+  };
 
   // Render Landing Page
   if (currentPage === 'landing') {
@@ -720,6 +890,9 @@ export default function App() {
               <li className={activeTab === 'risk-analyzer' ? 'active' : ''} onClick={() => setActiveTab('risk-analyzer')}>
                 <i className="fa-solid fa-gauge-high"></i> <span>Risk Analyzer</span>
               </li>
+              <li className={activeTab === 'telemetry-crud' ? 'active' : ''} onClick={() => setActiveTab('telemetry-crud')}>
+                <i className="fa-solid fa-list-check"></i> <span>Log Radar & CRUD</span>
+              </li>
               <li className={activeTab === 'time-machine' ? 'active' : ''} onClick={() => setActiveTab('time-machine')}>
                 <i className="fa-solid fa-clock-rotate-left"></i> <span>Time Machine</span>
               </li>
@@ -915,6 +1088,285 @@ export default function App() {
                       </div>
                     </div>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tab 7: Incident & Telemetry CRUD Radar */}
+            {activeTab === 'telemetry-crud' && (
+              <div className="tab-pane active">
+                <div className="pane-grid-2">
+                  
+                  {/* Left Column: Form & Radar Scope */}
+                  <div className="glass-card fill-grid-cell">
+                    <div className="card-header">
+                      <h3><i className="fa-solid fa-shield-halved text-gradient"></i> Threat Radar & Log Manager</h3>
+                      <button onClick={handleAIClusterScan} disabled={isScanningRadarReport} className="btn btn-secondary btn-glow" style={{ padding: '6px 12px', fontSize: '0.85rem' }}>
+                        <i className="fa-solid fa-brain"></i> {isScanningRadarReport ? 'Scanning...' : 'AI Threat Scan'}
+                      </button>
+                    </div>
+
+                    <div className="card-body">
+                      
+                      {/* Interactive Radar Screen Visualization */}
+                      <div className="radar-grid-wrapper" style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
+                        <div className="glass-card" style={{ background: '#020610', width: '220px', height: '220px', borderRadius: '50%', padding: '10px', border: '1px solid var(--border-color)', position: 'relative', overflow: 'hidden' }}>
+                          
+                          {/* Pulsing circular gridlines */}
+                          <div className="radar-sweep" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: 'conic-gradient(from 0deg, transparent 70%, rgba(168, 85, 247, 0.15))', borderRadius: '50%', transformOrigin: 'center', animation: 'spin 4s linear infinite' }} />
+                          
+                          <svg width="200" height="200" style={{ position: 'relative', zIndex: 2 }}>
+                            {/* Gridlines */}
+                            <circle cx="100" cy="100" r="90" stroke="rgba(255,255,255,0.06)" strokeWidth="1" fill="none" />
+                            <circle cx="100" cy="100" r="70" stroke="rgba(255,255,255,0.06)" strokeWidth="1" fill="none" />
+                            <circle cx="100" cy="100" r="50" stroke="rgba(255,255,255,0.06)" strokeWidth="1" fill="none" />
+                            <circle cx="100" cy="100" r="30" stroke="rgba(255,255,255,0.06)" strokeWidth="1" fill="none" />
+                            
+                            {/* Axis */}
+                            <line x1="100" y1="10" x2="100" y2="190" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
+                            <line x1="10" y1="100" x2="190" y2="100" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
+                            
+                            {/* Render Active Nodes from incidents */}
+                            {dbIncidents.map((inc, index) => {
+                              const { cx, cy } = getRadarCoordinates(inc._id, inc.severity, index);
+                              const color = inc.severity === 'critical' ? 'var(--color-red)' : inc.severity === 'high' ? 'var(--color-yellow)' : inc.severity === 'medium' ? 'var(--color-blue)' : 'var(--color-green)';
+                              const isSelected = selectedRadarId === inc._id;
+
+                              return (
+                                <g key={inc._id} style={{ cursor: 'pointer' }} onClick={() => setSelectedRadarId(inc._id)}>
+                                  <circle
+                                    cx={cx}
+                                    cy={cy}
+                                    r={isSelected ? 7 : 5}
+                                    fill={color}
+                                    style={{ transition: 'all 0.2s', filter: `drop-shadow(0 0 8px ${color})` }}
+                                    className="radar-ping-node"
+                                  />
+                                  {isSelected && (
+                                    <circle
+                                      cx={cx}
+                                      cy={cy}
+                                      r="12"
+                                      stroke={color}
+                                      strokeWidth="1.5"
+                                      fill="none"
+                                      style={{ animation: 'pulse-ring 1.5s infinite' }}
+                                    />
+                                  )}
+                                </g>
+                              );
+                            })}
+                          </svg>
+
+                          {/* Radar CSS Animation */}
+                          <style dangerouslySetInnerHTML={{__html: `
+                            @keyframes spin { 100% { transform: rotate(360deg); } }
+                            .radar-ping-node:hover { transform: scale(1.4); }
+                          `}} />
+                        </div>
+                      </div>
+
+                      {/* CRUD Entry Form */}
+                      <form onSubmit={handleSaveIncident} className="dashboard-form">
+                        <h4 style={{ fontSize: '0.9rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '6px', marginBottom: '12px' }}>
+                          <i className="fa-solid fa-pen-to-square"></i> {crudEditMode ? 'Edit Active Threat node' : 'Report New Incident Event'}
+                        </h4>
+                        
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                          <div className="form-group">
+                            <label>Microservice Source</label>
+                            <select value={radarService} onChange={(e) => setRadarService(e.target.value)}>
+                              <option value="checkout-service">checkout-service</option>
+                              <option value="payment-service">payment-service</option>
+                              <option value="auth-service">auth-service</option>
+                            </select>
+                          </div>
+                          <div className="form-group">
+                            <label>Severity Level</label>
+                            <select value={radarSeverity} onChange={(e: any) => setRadarSeverity(e.target.value)}>
+                              <option value="critical">Critical Outage</option>
+                              <option value="high">High Risk</option>
+                              <option value="medium">Medium Alert</option>
+                              <option value="low">Low Warning</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="form-group">
+                          <label>Log / Root Cause Description</label>
+                          <input
+                            type="text"
+                            value={radarRootCause}
+                            onChange={(e) => setRadarRootCause(e.target.value)}
+                            placeholder="e.g., Connection pool exhaustion in DB thread query"
+                            required
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label>Applied Mitigation Resolution</label>
+                          <input
+                            type="text"
+                            value={radarResolution}
+                            onChange={(e) => setRadarResolution(e.target.value)}
+                            placeholder="e.g., Restarted containers and adjusted connection pooling limits to 50"
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label>Chronology steps (One event step per line)</label>
+                          <textarea
+                            value={radarTimeline}
+                            onChange={(e) => setRadarTimeline(e.target.value)}
+                            placeholder="08:12 - Container initialization failure&#10;08:15 - Memory footprint exceeded 90% threshold"
+                            style={{ background: 'rgba(0, 0, 0, 0.25)', border: '1px solid var(--border-color)', borderRadius: '12px', color: 'white', padding: '10px', height: '80px', fontFamily: 'inherit', outline: 'none' }}
+                          />
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                          <button type="submit" disabled={isSavingIncident} className="btn btn-primary" style={{ flex: 1 }}>
+                            {isSavingIncident ? 'Saving...' : crudEditMode ? 'Commit Node Updates' : 'Add Telemetry Event'}
+                          </button>
+                          {crudEditMode && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCrudEditMode(false);
+                                setCurrentEditId('');
+                                setRadarRootCause('');
+                                setRadarResolution('');
+                                setRadarTimeline('');
+                              }}
+                              className="btn btn-secondary"
+                            >
+                              Cancel
+                            </button>
+                          )}
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+
+                  {/* Right Column: HUD Summary & Log Database List */}
+                  <div className="glass-card fill-grid-cell">
+                    <div className="card-header">
+                      <h3><i className="fa-solid fa-database text-gradient"></i> Active Incidents HUD</h3>
+                    </div>
+                    
+                    <div className="card-body scroll-body" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      
+                      {/* Summary Badges HUD */}
+                      <div className="hud-metrics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                        <div className="glass-card bg-glass-dark" style={{ padding: '12px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Threat Nodes</div>
+                          <div style={{ fontSize: '1.4rem', fontWeight: 'bold' }} className="font-mono">{totalOutages}</div>
+                        </div>
+                        <div className="glass-card bg-glass-dark" style={{ padding: '12px', textAlign: 'center', borderLeft: criticalOutages > 0 ? '2px solid var(--color-red)' : 'none' }}>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Critical Blocks</div>
+                          <div style={{ fontSize: '1.4rem', fontWeight: 'bold', color: criticalOutages > 0 ? 'var(--color-red)' : 'inherit' }} className="font-mono">{criticalOutages}</div>
+                        </div>
+                        <div className="glass-card bg-glass-dark" style={{ padding: '12px', textAlign: 'center' }}>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Security Density</div>
+                          <div>
+                            <span className={`badge ${criticalOutages > 0 ? 'badge-red' : highOutages > 0 ? 'badge-yellow' : 'badge-green'}`} style={{ marginTop: '4px' }}>
+                              {criticalOutages > 0 ? 'Critical' : highOutages > 0 ? 'Warning' : 'Healthy'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Display Selected Radar Node Info */}
+                      {selectedRadarId && (
+                        (() => {
+                          const selectedNode = dbIncidents.find(i => i._id === selectedRadarId);
+                          if (!selectedNode) return null;
+                          return (
+                            <div className="glass-card bg-glass-dark" style={{ padding: '16px', border: '1px solid rgba(168, 85, 247, 0.4)', position: 'relative' }}>
+                              <button onClick={() => setSelectedRadarId(null)} style={{ position: 'absolute', right: '12px', top: '12px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                                <i className="fa-solid fa-circle-xmark"></i>
+                              </button>
+                              <h4 style={{ display: 'flex', gap: '8px', alignItems: 'center', fontSize: '0.85rem' }}>
+                                <span className={`badge ${selectedNode.severity === 'critical' ? 'badge-red' : selectedNode.severity === 'high' ? 'badge-yellow' : 'badge-green'}`}>{selectedNode.severity}</span>
+                                <span>Radar target: <strong>{selectedNode.service}</strong></span>
+                              </h4>
+                              <p style={{ fontSize: '0.85rem', marginTop: '8px', color: 'var(--text-main)' }}>
+                                <strong>Log description:</strong> {selectedNode.rootCause}
+                              </p>
+                              {selectedNode.resolution && (
+                                <p style={{ fontSize: '0.85rem', marginTop: '4px', color: 'var(--color-green)' }}>
+                                  <strong>Resolution applied:</strong> {selectedNode.resolution}
+                                </p>
+                              )}
+                              {selectedNode.timeline && selectedNode.timeline.length > 0 && (
+                                <div style={{ marginTop: '8px' }}>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Node Chronology Log:</span>
+                                  <ul style={{ paddingLeft: '14px', fontSize: '0.75rem', marginTop: '4px', color: 'var(--text-muted)' }}>
+                                    {selectedNode.timeline.map((line, lIdx) => <li key={lIdx}>{line}</li>)}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()
+                      )}
+
+                      {/* AI Radar Review Block */}
+                      {radarReport && (
+                        <div className="glass-card bg-glass-dark" style={{ padding: '16px', borderLeft: '3px solid #a855f7' }}>
+                          <h4 style={{ fontSize: '0.85rem', marginBottom: '8px' }}><i className="fa-solid fa-brain text-gradient"></i> AI Threat Diagnostics Autopsy</h4>
+                          <div style={{ fontSize: '0.8rem', lineHeight: '1.5' }}>
+                            {renderMarkdown(radarReport)}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Incidents Database list */}
+                      <div className="incidents-table-wrapper" style={{ marginTop: '10px' }}>
+                        <span className="log-title" style={{ display: 'block', marginBottom: '8px' }}>Database Outage Records</span>
+                        
+                        {isFetchingIncidents ? (
+                          <div style={{ textAlign: 'center', padding: '20px' }}>
+                            <i className="fa-solid fa-spinner fa-spin"></i> Loading DB logs...
+                          </div>
+                        ) : dbIncidents.length === 0 ? (
+                          <div className="empty-state">
+                            <i className="fa-solid fa-inbox"></i>
+                            <p>No telemetry logs stored. Use the form to record custom events.</p>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                            {dbIncidents.map((inc) => (
+                              <div key={inc._id} className="glass-card bg-glass-dark" style={{ padding: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxWidth: '80%' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span className={`badge ${inc.severity === 'critical' ? 'badge-red' : inc.severity === 'high' ? 'badge-yellow' : 'badge-green'}`}>
+                                      {inc.severity}
+                                    </span>
+                                    <span style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>{inc.service}</span>
+                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-dark)' }}>{new Date(inc.date).toLocaleDateString()}</span>
+                                  </div>
+                                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {inc.rootCause}
+                                  </div>
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                  <button onClick={() => handleEditIncidentClick(inc)} className="btn btn-icon-only" style={{ width: '28px', height: '28px', fontSize: '0.75rem' }} title="Edit incident">
+                                    <i className="fa-solid fa-pencil"></i>
+                                  </button>
+                                  <button onClick={() => handleDeleteIncidentClick(inc._id)} className="btn btn-icon-only" style={{ width: '28px', height: '28px', fontSize: '0.75rem' }} title="Delete incident">
+                                    <i className="fa-solid fa-trash"></i>
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                    </div>
+                  </div>
+
                 </div>
               </div>
             )}

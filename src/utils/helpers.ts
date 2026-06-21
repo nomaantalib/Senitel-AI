@@ -13,7 +13,7 @@ export class RiskEngine {
   /**
    * Computes a comprehensive risk score and breakdown for a service release
    */
-  public static calculateRisk(serviceName: string, isDemoMode: boolean): RiskBreakdown {
+  public static calculateRisk(serviceName: string, isDemoMode: boolean, customIncidents?: any[]): RiskBreakdown {
     let memoryRisk = 0;
     let bugRisk = 0;
     let latencyRisk = 0;
@@ -24,7 +24,9 @@ export class RiskEngine {
     const metricsMap = db.getPrometheusMetrics();
     const metrics: ServiceMetrics | undefined = metricsMap[serviceName];
     const tickets = db.getJiraTickets().filter(t => t.service === serviceName);
-    const incidents = db.getIncidents().filter(i => i.service === serviceName);
+    const incidents = customIncidents !== undefined
+      ? customIncidents.filter(i => i.service === serviceName)
+      : db.getIncidents().filter(i => i.service === serviceName);
 
     // 1. Memory and CPU Risk (Max 25 pts)
     if (metrics) {

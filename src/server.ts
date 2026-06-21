@@ -2,10 +2,11 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
+import mongoose from 'mongoose';
 import { db } from './database/mockDb';
 import { RiskEngine } from './utils/helpers';
 import { GeminiService } from './ai/geminiService';
-import { connectMongo } from './database/mongo';
+import { connectMongo, IncidentModel } from './database/mongo';
 import { SecurityMasker } from './utils/masking';
 
 const app = express();
@@ -73,16 +74,42 @@ app.post('/api/analyze-release', async (req, res) => {
   if (!isDemo && githubRepo) {
     try {
       console.log(`[Sentinel Proxy] Querying GitHub API for repository commits: ${githubRepo}`);
-      const gitResponse = await fetch(`https://api.github.com/repos/${githubRepo}/commits`, {
-        headers: { 'User-Agent': 'sentinel-ai-devops-guardian' }
-      });
+      const headers: Record<string, string> = {
+        'User-Agent': 'sentinel-ai-devops-guardian'
+      };
+      if (process.env.GITHUB_TOKEN) {
+        headers['Authorization'] = `token ${process.env.GITHUB_TOKEN}`;
+      } else if (process.env.GITHUB_PAT) {
+        headers['Authorization'] = `token ${process.env.GITHUB_PAT}`;
+      }
+
+      const gitResponse = await fetch(`https://api.github.com/repos/${githubRepo}/commits`, { headers });
       if (gitResponse.ok) {
         const commits = await gitResponse.json() as any[];
         fetchedCommitsCount = Math.min(commits.length, 5);
+        
+        let commitDetailsContext = '';
+        if (commits.length > 0) {
+          const latestSha = commits[0].sha;
+          try {
+            console.log(`[Sentinel Proxy] Fetching commit details for SHA: ${latestSha}`);
+            const commitDetailResponse = await fetch(`https://api.github.com/repos/${githubRepo}/commits/${latestSha}`, { headers });
+            if (commitDetailResponse.ok) {
+              const detailData = await commitDetailResponse.json() as any;
+              const filesSummary = (detailData.files || []).slice(0, 5).map((f: any) => 
+                `  - ${f.filename} (+${f.additions}/-${f.deletions}) [Status: ${f.status}]`
+              ).join('\n');
+              commitDetailsContext = `\nLatest Commit Details (${latestSha.slice(0, 7)}):\n- Author: ${detailData.commit?.author?.name}\n- Date: ${detailData.commit?.author?.date}\n- Files Changed:\n${filesSummary}`;
+            }
+          } catch (detailErr) {
+            console.error('Error fetching commit details:', detailErr);
+          }
+        }
+
         const lastCommits = commits.slice(0, 5).map(c => 
           `* Commit by ${c.commit.author?.name || 'author'}: "${c.commit.message}" (Hash: ${c.sha?.slice(0, 7)})`
         ).join('\n');
-        gitCommitContext = `\nRecent GitHub commits found in repository "${githubRepo}":\n${lastCommits}`;
+        gitCommitContext = `\nRecent GitHub commits found in repository "${githubRepo}":\n${lastCommits}\n${commitDetailsContext}`;
       } else {
         // Fallback commits if rate-limited or forbidden
         const fallbackCommits = [
@@ -104,8 +131,19 @@ app.post('/api/analyze-release', async (req, res) => {
     }
   }
 
-  // 2. Calculate risk score using the risk engine
-  const riskAnalysis = RiskEngine.calculateRisk(selectedService, isDemo);
+  // 2. Fetch incidents from MongoDB if connected to evaluate risk
+  let customIncidents: any[] | undefined = undefined;
+  const isMongoConnected = mongoose.connection.readyState === 1;
+  if (isMongoConnected) {
+    try {
+      customIncidents = await IncidentModel.find().lean();
+    } catch (dbErr) {
+      console.error('[Sentinel Risk Engine] Failed to query Mongo incidents for risk engine:', dbErr);
+    }
+  }
+
+  // 3. Calculate risk score using the risk engine
+  const riskAnalysis = RiskEngine.calculateRisk(selectedService, isDemo, customIncidents);
 
   // 3. Draft prompt for Gemini
   const systemPrompt = `You are Sentinel AI, the Predictive DevOps & Deployment Guardian. 
@@ -160,13 +198,25 @@ app.post('/api/explain-outage', async (req, res) => {
   const { query = 'Friday outage', mode = 'demo', apiKey } = req.body;
 
   // Retrieve matching incident
-  const incidents = db.getIncidents();
+  let incidents: any[] = [];
+  const isMongoConnected = mongoose.connection.readyState === 1;
+  if (isMongoConnected) {
+    try {
+      incidents = await IncidentModel.find().lean();
+    } catch (err) {
+      console.error('[Sentinel Explain Outage] MongoDB fetch error:', err);
+      incidents = db.getIncidents();
+    }
+  } else {
+    incidents = db.getIncidents();
+  }
+
   const searchIncident = incidents.find(inc => 
     inc.rootCause.toLowerCase().includes(query.toLowerCase()) || 
     inc.service.toLowerCase().includes(query.toLowerCase()) ||
     query.toLowerCase().includes('friday') ||
     query.toLowerCase().includes('outage')
-  ) || incidents[0]; // default to first incident
+  ) || incidents[0] || { _id: 'mock_empty', service: 'checkout-service', rootCause: 'No incidents recorded yet', timeline: ['No logged events found.'], resolution: 'Configure telemetry logs to start analysis.' };
 
   const systemPrompt = `You are Sentinel AI Incident Time Machine.
 Reconstruct the incident timeline based on historical telemetry.
@@ -176,7 +226,7 @@ Format in a beautiful markdown list with clear timestamp logs.`;
   const userPrompt = `
 Reconstruct the timeline for incident ID ${searchIncident._id} affecting "${searchIncident.service}".
 Historical timeline steps:
-${searchIncident.timeline.map(t => `- ${t}`).join('\n')}
+${(searchIncident.timeline || []).map((t: any) => `- ${t}`).join('\n')}
 Root Cause identified: ${searchIncident.rootCause}
 Resolution: ${searchIncident.resolution}
 
@@ -256,6 +306,132 @@ Identify the root cause probability, provide specific evidence logs, and list pr
       error: aiResult.error
     }
   });
+});
+
+// -------------------------------------------------------------
+// INCIDENT LOG CRUD ENDPOINTS
+// -------------------------------------------------------------
+
+/**
+ * Fetch all incident logs (MongoDB or fallback local db)
+ */
+app.get('/api/incidents', async (req, res) => {
+  try {
+    const isMongoConnected = mongoose.connection.readyState === 1;
+    if (isMongoConnected) {
+      const incidents = await IncidentModel.find().sort({ date: -1 });
+      res.json(incidents);
+    } else {
+      res.json(db.getIncidents());
+    }
+  } catch (err: any) {
+    console.error('[Sentinel CRUD] Fetch error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * Create a new incident log
+ */
+app.post('/api/incidents', async (req, res) => {
+  const { service, severity, rootCause, resolution = '', timeline = [] } = req.body;
+  try {
+    const isMongoConnected = mongoose.connection.readyState === 1;
+    const cleanTimeline = timeline.length ? timeline : [`Incident reported in telemetry log for ${service}.`];
+    
+    const incidentData = {
+      service,
+      severity,
+      rootCause,
+      resolution,
+      timeline: cleanTimeline,
+      date: new Date()
+    };
+
+    if (isMongoConnected) {
+      const doc = new IncidentModel(incidentData);
+      await doc.save();
+      res.json(doc);
+    } else {
+      const mockId = 'inc_' + Math.random().toString(36).substring(2, 11);
+      const mockDoc = {
+        _id: mockId,
+        ...incidentData,
+        date: new Date().toISOString(),
+        similarOutagesCount: 0
+      };
+      db.getIncidents().unshift(mockDoc as any);
+      res.json(mockDoc);
+    }
+  } catch (err: any) {
+    console.error('[Sentinel CRUD] Create error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * Update an existing incident log
+ */
+app.put('/api/incidents/:id', async (req, res) => {
+  const { id } = req.params;
+  const { severity, rootCause, resolution, timeline } = req.body;
+  try {
+    const isMongoConnected = mongoose.connection.readyState === 1;
+    if (isMongoConnected) {
+      const doc = await IncidentModel.findByIdAndUpdate(
+        id,
+        { severity, rootCause, resolution, timeline },
+        { new: true }
+      );
+      res.json(doc);
+    } else {
+      const incidents = db.getIncidents();
+      const idx = incidents.findIndex(i => i._id === id);
+      if (idx !== -1) {
+        if (severity) incidents[idx].severity = severity;
+        if (rootCause) incidents[idx].rootCause = rootCause;
+        if (resolution !== undefined) incidents[idx].resolution = resolution;
+        if (timeline) incidents[idx].timeline = timeline;
+        res.json(incidents[idx]);
+      } else {
+        res.status(404).json({ error: 'Incident not found' });
+      }
+    }
+  } catch (err: any) {
+    console.error('[Sentinel CRUD] Update error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * Delete an incident log
+ */
+app.delete('/api/incidents/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const isMongoConnected = mongoose.connection.readyState === 1;
+    if (isMongoConnected) {
+      if (mongoose.Types.ObjectId.isValid(id)) {
+        await IncidentModel.findByIdAndDelete(id);
+      } else {
+        // Handle mock string IDs if they somehow ended up in Mongo connection context
+        await IncidentModel.deleteOne({ _id: id } as any);
+      }
+      res.json({ success: true, id });
+    } else {
+      const incidents = db.getIncidents();
+      const idx = incidents.findIndex(i => i._id === id);
+      if (idx !== -1) {
+        incidents.splice(idx, 1);
+        res.json({ success: true, id });
+      } else {
+        res.status(404).json({ error: 'Incident not found' });
+      }
+    }
+  } catch (err: any) {
+    console.error('[Sentinel CRUD] Delete error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 /**
