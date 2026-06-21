@@ -4,7 +4,8 @@
   "description": "Predictive DevOps & Deployment Guardian for Slack",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc",
+    "build": "npm run build-frontend && tsc",
+    "build-frontend": "npm --prefix frontend install && npm --prefix frontend run build",
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts"
   },
