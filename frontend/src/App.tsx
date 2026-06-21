@@ -54,6 +54,7 @@ export default function App() {
   const [userApiKey, setUserApiKey] = useState<string>(() => {
     return localStorage.getItem('sentinel_gemini_api_key') || '';
   });
+  const [inputKey, setInputKey] = useState<string>(userApiKey);
   const [showApiKey, setShowApiKey] = useState<boolean>(false);
   const [fallbackKey, setFallbackKey] = useState<string>('Loading...');
   
@@ -1767,20 +1768,42 @@ export default function App() {
                       <h3><i className="fa-solid fa-gears"></i> Sentinel AI Control Board</h3>
                     </div>
                     <div className="card-body">
-                      <div className="config-section">
+                       <div className="config-section">
                         <h4>Gemini API Configuration</h4>
-                        <form onSubmit={(e) => e.preventDefault()}>
+                        <form onSubmit={(e) => {
+                          e.preventDefault();
+                          const trimmed = inputKey.trim();
+                          setUserApiKey(trimmed);
+                          if (trimmed) {
+                            localStorage.setItem('sentinel_gemini_api_key', trimmed);
+                          } else {
+                            localStorage.removeItem('sentinel_gemini_api_key');
+                          }
+                          alert('Gemini API Key configuration updated successfully!');
+                        }}>
                           <div className="form-group" style={{ marginTop: '12px' }}>
-                            <label>Your Gemini API Key</label>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                              <label style={{ margin: 0 }}>Your Gemini API Key</label>
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 600 }}>
+                                <span style={{
+                                  display: 'inline-block',
+                                  width: '8px',
+                                  height: '8px',
+                                  borderRadius: '50%',
+                                  background: userApiKey.trim() !== '' ? 'var(--color-green)' : 'var(--color-yellow)',
+                                  boxShadow: userApiKey.trim() !== '' ? '0 0 8px var(--color-green)' : '0 0 8px var(--color-yellow)'
+                                }}></span>
+                                <span style={{ color: userApiKey.trim() !== '' ? 'var(--color-green)' : 'var(--color-yellow)' }}>
+                                  {userApiKey.trim() !== '' ? 'ACTIVE (Custom Key)' : 'INACTIVE (Using Fallback Key)'}
+                                </span>
+                              </span>
+                            </div>
                             <div className="password-input-wrapper" style={{ position: 'relative' }}>
                               <input
                                 type={showApiKey ? "text" : "password"}
                                 name="gemini_api_key"
-                                value={userApiKey}
-                                onChange={(e) => {
-                                  setUserApiKey(e.target.value);
-                                  localStorage.setItem('sentinel_gemini_api_key', e.target.value);
-                                }}
+                                value={inputKey}
+                                onChange={(e) => setInputKey(e.target.value)}
                                 placeholder="Enter key (Optionally leaves blank to trigger Fallback API Key)"
                                 autoComplete="new-password"
                                 style={{ paddingRight: '40px' }}
@@ -1809,7 +1832,31 @@ export default function App() {
                                 <i className={`fa-solid ${showApiKey ? 'fa-eye-slash' : 'fa-eye'}`}></i>
                               </button>
                             </div>
-                            <small className="helper-text" style={{ display: 'block', marginTop: '6px' }}>
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
+                              <button
+                                type="submit"
+                                className="btn btn-primary"
+                                style={{ padding: '6px 16px', fontSize: '0.85rem' }}
+                              >
+                                <i className="fa-solid fa-floppy-disk"></i> Save Key
+                              </button>
+                              {userApiKey.trim() !== '' && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setInputKey('');
+                                    setUserApiKey('');
+                                    localStorage.removeItem('sentinel_gemini_api_key');
+                                    alert('Gemini API Key cleared.');
+                                  }}
+                                  className="btn btn-secondary"
+                                  style={{ padding: '6px 16px', fontSize: '0.85rem' }}
+                                >
+                                  <i className="fa-solid fa-trash-can"></i> Clear Key
+                                </button>
+                              )}
+                            </div>
+                            <small className="helper-text" style={{ display: 'block', marginTop: '8px' }}>
                               <i className="fa-solid fa-circle-exclamation text-yellow"></i> Leave blank to use our integrated Hackathon Fallback API Key.
                             </small>
                             <a href="https://aistudio.google.com/app/apikey" target="_blank" className="ai-studio-link" rel="noreferrer" style={{ display: 'block', marginTop: '8px', color: '#c084fc', textDecoration: 'none' }}>
