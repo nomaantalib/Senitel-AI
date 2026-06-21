@@ -45,10 +45,24 @@ export default function App() {
   // Tab navigation state
   const [activeTab, setActiveTab] = useState<
     'risk-analyzer' | 'time-machine' | 'release-advisor' | 'root-cause' | 'slack-simulator' | 'model-config' | 'telemetry-crud'
-  >('risk-analyzer');
+  >(() => {
+    return (localStorage.getItem('sentinel_active_tab') as any) || 'risk-analyzer';
+  });
 
   // Mode Selection: Demo or Live
-  const [isDemo, setIsDemo] = useState<boolean>(true);
+  const [isDemo, setIsDemo] = useState<boolean>(() => {
+    const saved = localStorage.getItem('sentinel_is_demo');
+    return saved !== null ? saved === 'true' : true;
+  });
+
+  // Save state on change to stay on the same screen upon reload
+  useEffect(() => {
+    localStorage.setItem('sentinel_active_tab', activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
+    localStorage.setItem('sentinel_is_demo', String(isDemo));
+  }, [isDemo]);
 
   // Gemini API Key config
   const [userApiKey, setUserApiKey] = useState<string>(() => {
