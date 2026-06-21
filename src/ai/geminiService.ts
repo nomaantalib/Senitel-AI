@@ -207,7 +207,7 @@ ${warnings}
 
     // If all failed, return a structured error with helpful context
     return {
-      text: 'Error: Unable to process LLM request after attempting fallback keys and model types.',
+      text: `Error: Unable to process LLM request. Detail: ${lastError?.message || 'Please check your Gemini API key configuration and network connectivity.'}`,
       modelUsed: 'N/A',
       keyUsed: 'N/A',
       error: lastError?.message || 'Unknown network error'
