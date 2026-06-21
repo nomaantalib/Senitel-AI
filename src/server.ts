@@ -145,12 +145,38 @@ app.post('/api/analyze-release', async (req, res) => {
   // 3. Calculate risk score using the risk engine
   const riskAnalysis = RiskEngine.calculateRisk(selectedService, isDemo, customIncidents);
 
-  // 3. Draft prompt for Gemini
+  // 3b. Retrieve and filter matching runbooks (RAG Verification)
+  const allRunbooks = db.getRunbooks();
+  const matchedRunbooks = allRunbooks.filter(runbook => {
+    const serviceLower = selectedService.toLowerCase();
+    // Match runbook tags with selected service
+    const serviceMatch = runbook.tags.some(tag => serviceLower.includes(tag.toLowerCase()));
+    
+    // Match runbook tags with words in risk reasons
+    const reasonMatch = riskAnalysis.reasons.some(reason => {
+      const reasonLower = reason.toLowerCase();
+      return runbook.tags.some(tag => reasonLower.includes(tag.toLowerCase()));
+    });
+    
+    return serviceMatch || reasonMatch;
+  });
+
+  let runbooksContext = '';
+  if (matchedRunbooks.length > 0) {
+    runbooksContext = `\nMatched Reference Runbooks for Verification:\n` + matchedRunbooks.map((rb, idx) => 
+      `Runbook ${idx + 1}: ${rb.title}\nContent: ${rb.content}\nTags: ${rb.tags.join(', ')}`
+    ).join('\n\n');
+  } else {
+    runbooksContext = `\nNo specific matching incident runbooks were found in the database. Use standard DevOps practices.`;
+  }
+
+  // 3c. Draft prompt for Gemini
   const systemPrompt = `You are Sentinel AI, the Predictive DevOps & Deployment Guardian. 
-Analyze the release metrics and write a professional, high-impact release risk summary.
+Analyze the release metrics, cross-reference them against any provided reference runbooks, and write a professional, high-impact release risk summary.
 Structure your response in markdown format with sections:
 - Executive Prediction
 - Detailed Risk Breakdown (Memory, Bug, Latency, Historical Outages)
+- Runbook & Deployment Verification (Cross-reference and verify current metrics against the matched incident runbooks provided in the context)
 - Actionable Recommendation`;
 
   const userPrompt = `
@@ -164,7 +190,9 @@ Telemetry and health details:
 - Raw telemetry warnings/flags:
 ${riskAnalysis.reasons.map(r => `  * ${r}`).join('\n')}
 
-Please generate a deployment guard report based on this telemetry. Explain why the risk score is at ${riskAnalysis.totalRisk}% and outline the best path forward (e.g. Canary strategy, delay deployment, or normal rolling).`;
+${runbooksContext}
+
+Please generate a deployment guard report based on this telemetry and verify it against the matching runbook guidelines. Explain why the risk score is at ${riskAnalysis.totalRisk}% and outline the best path forward (e.g. Canary strategy, delay deployment, or normal rolling). You MUST explicitly cite specific mitigation steps from the matched runbooks above (e.g. connection pool size parameters, memory profile heapdumps, or Redis maxmemory-policy configuration) if they match the risk reasons.`;
 
   // 4. Request analysis from Gemini (with fallback handling)
   const aiResult = await GeminiService.generateContent(userPrompt, systemPrompt, apiKey, isDemo);
