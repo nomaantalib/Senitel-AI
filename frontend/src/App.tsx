@@ -52,6 +52,7 @@ export default function App() {
 
   // Gemini API Key config
   const [userApiKey, setUserApiKey] = useState<string>('');
+  const [showApiKey, setShowApiKey] = useState<boolean>(false);
   const [fallbackKey, setFallbackKey] = useState<string>('Loading...');
   
   // Diagnostics
@@ -263,14 +264,20 @@ export default function App() {
   // GitHub Connection Action handler
   const handleConnectGithub = async (e: React.FormEvent) => {
     e.preventDefault();
-    const repoVal = githubInput.trim();
-    if (!repoVal) {
+    const rawRepo = githubInput.trim();
+    if (!rawRepo) {
       setGithubMsg({ text: 'Please enter repository owner/name.', type: 'error' });
       return;
     }
 
+    // Sanitize repository input (e.g., strip https://github.com/ and trailing .git)
+    let repoVal = rawRepo;
+    repoVal = repoVal.replace(/^(https?:\/\/)?(www\.)?github\.com\//i, '');
+    repoVal = repoVal.replace(/\.git$/i, '');
+    repoVal = repoVal.replace(/\/+$/, '');
+
     setIsGithubVerifying(true);
-    setGithubMsg({ text: 'Locating repository...', type: 'info' });
+    setGithubMsg({ text: `Locating repository: ${repoVal}...`, type: 'info' });
 
     try {
       const response = await fetch(`https://api.github.com/repos/${repoVal}`);
@@ -294,7 +301,12 @@ export default function App() {
   };
 
   const handleForceConnect = () => {
-    const repoVal = githubInput.trim() || 'sentinel-ai-custom-repo';
+    const rawRepo = githubInput.trim() || 'sentinel-ai-custom-repo';
+    let repoVal = rawRepo;
+    repoVal = repoVal.replace(/^(https?:\/\/)?(www\.)?github\.com\//i, '');
+    repoVal = repoVal.replace(/\.git$/i, '');
+    repoVal = repoVal.replace(/\/+$/, '');
+
     setGithubRepo(repoVal);
     setGithubConnected(true);
     setGithubMsg({ text: `Connected successfully (Forced) to ${repoVal}`, type: 'success' });
@@ -1758,13 +1770,40 @@ export default function App() {
                         <form onSubmit={(e) => e.preventDefault()}>
                           <div className="form-group" style={{ marginTop: '12px' }}>
                             <label>Your Gemini API Key</label>
-                            <input
-                              type="password"
-                              value={userApiKey}
-                              onChange={(e) => setUserApiKey(e.target.value)}
-                              placeholder="Enter key (Optionally leaves blank to trigger Fallback API Key)"
-                              autoComplete="current-password"
-                            />
+                            <div className="password-input-wrapper" style={{ position: 'relative' }}>
+                              <input
+                                type={showApiKey ? "text" : "password"}
+                                name="gemini_api_key"
+                                value={userApiKey}
+                                onChange={(e) => setUserApiKey(e.target.value)}
+                                placeholder="Enter key (Optionally leaves blank to trigger Fallback API Key)"
+                                autoComplete="new-password"
+                                style={{ paddingRight: '40px' }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowApiKey(!showApiKey)}
+                                style={{
+                                  position: 'absolute',
+                                  right: '12px',
+                                  top: '50%',
+                                  transform: 'translateY(-50%)',
+                                  background: 'none',
+                                  border: 'none',
+                                  color: 'var(--text-muted)',
+                                  cursor: 'pointer',
+                                  fontSize: '1rem',
+                                  zIndex: 5,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  padding: 0
+                                }}
+                                title={showApiKey ? "Hide Key" : "Show Key"}
+                              >
+                                <i className={`fa-solid ${showApiKey ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                              </button>
+                            </div>
                             <small className="helper-text" style={{ display: 'block', marginTop: '6px' }}>
                               <i className="fa-solid fa-circle-exclamation text-yellow"></i> Leave blank to use our integrated Hackathon Fallback API Key.
                             </small>
