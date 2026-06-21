@@ -939,8 +939,27 @@ export default function App() {
           {/* Core Content Box */}
           <section className="console-content" style={{ flex: 1, padding: '30px', overflowY: 'auto' }}>
             
+            {!isDemo && !githubConnected && activeTab !== 'model-config' && (
+              <div className="glass-card" style={{ padding: '60px 40px', textAlign: 'center', maxWidth: '640px', margin: '40px auto', border: '1px solid rgba(168, 85, 247, 0.3)', boxShadow: '0 0 30px rgba(168, 85, 247, 0.1)' }}>
+                <div style={{ fontSize: '3.5rem', marginBottom: '20px', color: 'var(--color-yellow)' }}>
+                  <i className="fa-solid fa-triangle-exclamation animate-pulse"></i>
+                </div>
+                <h2 style={{ fontSize: '1.6rem', marginBottom: '16px', fontWeight: 'bold', fontFamily: 'Outfit' }}>Codebase Connection Required</h2>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: '1.7', marginBottom: '28px' }}>
+                  Please connect the codebase or GitHub repository first to see analysis, release reports, and telemetry timeline diagnostics in Live Mode.
+                </p>
+                <button 
+                  onClick={() => setActiveTab('model-config')} 
+                  className="btn btn-primary btn-glow"
+                  style={{ padding: '12px 28px', fontSize: '0.9rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <i className="fa-brands fa-github"></i> Connect GitHub Repo
+                </button>
+              </div>
+            )}
+
             {/* Tab 1: Risk Analyzer */}
-            {activeTab === 'risk-analyzer' && (
+            {activeTab === 'risk-analyzer' && (isDemo || githubConnected) && (
               <div className="tab-pane active">
                 <div className="pane-grid-2">
                   <div className="glass-card fill-grid-cell">
@@ -1108,7 +1127,7 @@ export default function App() {
             )}
 
             {/* Tab 7: Incident & Telemetry CRUD Radar */}
-            {activeTab === 'telemetry-crud' && (
+            {activeTab === 'telemetry-crud' && (isDemo || githubConnected) && (
               <div className="tab-pane active">
                 <div className="pane-grid-2">
                   
@@ -1387,7 +1406,7 @@ export default function App() {
             )}
 
             {/* Tab 2: Incident Time Machine */}
-            {activeTab === 'time-machine' && (
+            {activeTab === 'time-machine' && (isDemo || githubConnected) && (
               <div className="tab-pane active">
                 <div className="pane-grid-2">
                   <div className="glass-card fill-grid-cell">
@@ -1464,7 +1483,7 @@ export default function App() {
             )}
 
             {/* Tab 3: Release Advisor */}
-            {activeTab === 'release-advisor' && (
+            {activeTab === 'release-advisor' && (isDemo || githubConnected) && (
               <div className="tab-pane active">
                 <div className="pane-grid-2">
                   <div className="glass-card fill-grid-cell">
@@ -1540,7 +1559,7 @@ export default function App() {
             )}
 
             {/* Tab 4: Root Cause Analysis */}
-            {activeTab === 'root-cause' && (
+            {activeTab === 'root-cause' && (isDemo || githubConnected) && (
               <div className="tab-pane active">
                 <div className="pane-grid-2">
                   <div className="glass-card fill-grid-cell">
@@ -1606,7 +1625,7 @@ export default function App() {
             )}
 
             {/* Tab 5: Slack Command Simulator */}
-            {activeTab === 'slack-simulator' && (
+            {activeTab === 'slack-simulator' && (isDemo || githubConnected) && (
               <div className="tab-pane active">
                 <div className="slack-simulator-wrapper" style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 150px)' }}>
                   <div className="glass-card slack-header-card" style={{ padding: '16px', marginBottom: '16px' }}>
