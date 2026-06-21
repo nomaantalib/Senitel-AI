@@ -51,7 +51,9 @@ export default function App() {
   const [isDemo, setIsDemo] = useState<boolean>(true);
 
   // Gemini API Key config
-  const [userApiKey, setUserApiKey] = useState<string>('');
+  const [userApiKey, setUserApiKey] = useState<string>(() => {
+    return localStorage.getItem('sentinel_gemini_api_key') || '';
+  });
   const [showApiKey, setShowApiKey] = useState<boolean>(false);
   const [fallbackKey, setFallbackKey] = useState<string>('Loading...');
   
@@ -1775,7 +1777,10 @@ export default function App() {
                                 type={showApiKey ? "text" : "password"}
                                 name="gemini_api_key"
                                 value={userApiKey}
-                                onChange={(e) => setUserApiKey(e.target.value)}
+                                onChange={(e) => {
+                                  setUserApiKey(e.target.value);
+                                  localStorage.setItem('sentinel_gemini_api_key', e.target.value);
+                                }}
                                 placeholder="Enter key (Optionally leaves blank to trigger Fallback API Key)"
                                 autoComplete="new-password"
                                 style={{ paddingRight: '40px' }}
