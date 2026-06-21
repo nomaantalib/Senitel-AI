@@ -86,6 +86,13 @@ export default function App() {
   const [githubTokenInput, setGithubTokenInput] = useState<string>(() => {
     return localStorage.getItem('sentinel_github_token') || '';
   });
+  const [latestCommit, setLatestCommit] = useState<any>(() => {
+    const saved = localStorage.getItem('sentinel_github_latest_commit');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { return null; }
+    }
+    return null;
+  });
 
   // Feature 1: Pre-Deployment Risk Analyzer
   const [releaseVersion, setReleaseVersion] = useState<string>('v4.2');
@@ -295,6 +302,30 @@ export default function App() {
       }
       const response = await fetch(`https://api.github.com/repos/${repoVal}`, { headers });
       if (response.ok) {
+        // Fetch latest commit for Render-like dashboard details
+        let commitObj = null;
+        try {
+          const commitsRes = await fetch(`https://api.github.com/repos/${repoVal}/commits`, { headers });
+          if (commitsRes.ok) {
+            const commits = await commitsRes.json();
+            if (commits && commits.length > 0) {
+              const c = commits[0];
+              commitObj = {
+                sha: c.sha,
+                message: c.commit.message,
+                authorName: c.commit.author?.name || c.author?.login || 'author',
+                authorAvatar: c.author?.avatar_url || '',
+                date: c.commit.author?.date || '',
+                htmlUrl: c.html_url
+              };
+              setLatestCommit(commitObj);
+              localStorage.setItem('sentinel_github_latest_commit', JSON.stringify(commitObj));
+            }
+          }
+        } catch (commitErr) {
+          console.warn('Failed to fetch latest commit details for UI setup:', commitErr);
+        }
+
         setGithubRepo(repoVal);
         setGithubConnected(true);
         setGithubMsg({ text: `Connected successfully to ${repoVal}`, type: 'success' });
@@ -952,21 +983,58 @@ export default function App() {
           <section className="console-content" style={{ flex: 1, padding: '30px', overflowY: 'auto' }}>
             
             {!isDemo && !githubConnected && activeTab !== 'model-config' && (
-              <div className="glass-card" style={{ padding: '60px 40px', textAlign: 'center', maxWidth: '640px', margin: '40px auto', border: '1px solid rgba(168, 85, 247, 0.3)', boxShadow: '0 0 30px rgba(168, 85, 247, 0.1)' }}>
-                <div style={{ fontSize: '3.5rem', marginBottom: '20px', color: 'var(--color-yellow)' }}>
+              <div className="glass-card" style={{ padding: '40px', textAlign: 'center', maxWidth: '580px', margin: '40px auto', border: '1px solid rgba(168, 85, 247, 0.3)', boxShadow: '0 0 30px rgba(168, 85, 247, 0.1)' }}>
+                <div style={{ fontSize: '3rem', marginBottom: '16px', color: 'var(--color-yellow)' }}>
                   <i className="fa-solid fa-triangle-exclamation animate-pulse"></i>
                 </div>
-                <h2 style={{ fontSize: '1.6rem', marginBottom: '16px', fontWeight: 'bold', fontFamily: 'Outfit' }}>Codebase Connection Required</h2>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: '1.7', marginBottom: '28px' }}>
-                  Please connect the codebase or GitHub repository first to see analysis, release reports, and telemetry timeline diagnostics in Live Mode.
+                <h2 style={{ fontSize: '1.5rem', marginBottom: '12px', fontWeight: 'bold', fontFamily: 'Outfit' }}>Codebase Connection Required</h2>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: '1.6', marginBottom: '24px' }}>
+                  Please connect your codebase or GitHub repository below to enable Live DevOps analytics, release risk audits, and timeline autopsies.
                 </p>
-                <button 
-                  onClick={() => setActiveTab('model-config')} 
-                  className="btn btn-primary btn-glow"
-                  style={{ padding: '12px 28px', fontSize: '0.9rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '8px' }}
-                >
-                  <i className="fa-brands fa-github"></i> Connect GitHub Repo
-                </button>
+                
+                <div style={{ textAlign: 'left', background: 'rgba(0,0,0,0.2)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                  <form onSubmit={handleConnectGithub}>
+                    <div className="form-group" style={{ marginBottom: '12px' }}>
+                      <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Repository URL or owner/name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. owner/repository"
+                        value={githubInput}
+                        onChange={(e) => setGithubInput(e.target.value)}
+                        disabled={isGithubVerifying}
+                        style={{ width: '100%' }}
+                      />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: '16px' }}>
+                      <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>GitHub Personal Access Token (Optional)</label>
+                      <input
+                        type="password"
+                        placeholder="Enter GitHub PAT (Required for private repositories)"
+                        value={githubTokenInput}
+                        onChange={(e) => {
+                          setGithubTokenInput(e.target.value);
+                          localStorage.setItem('sentinel_github_token', e.target.value);
+                        }}
+                        disabled={isGithubVerifying}
+                        autoComplete="new-password"
+                        style={{ width: '100%' }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={isGithubVerifying}>
+                        {isGithubVerifying ? 'Locating...' : 'Connect Codebase'}
+                      </button>
+                      <button type="button" onClick={handleForceConnect} className="btn btn-secondary">
+                        Force Connect
+                      </button>
+                    </div>
+                    {githubMsg && (
+                      <div style={{ fontSize: '0.8rem', marginTop: '10px', color: githubMsg.type === 'success' ? 'var(--color-green)' : 'var(--color-red)' }}>
+                        {githubMsg.text}
+                      </div>
+                    )}
+                  </form>
+                </div>
               </div>
             )}
 
@@ -989,11 +1057,53 @@ export default function App() {
                           </p>
                           
                           {githubConnected ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                              <div className="badge badge-green" style={{ display: 'inline-block', padding: '6px 12px', width: 'fit-content' }}>
-                                <i className="fa-solid fa-circle-check"></i> Connected: {githubRepo}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', background: 'rgba(0,0,0,0.15)', padding: '16px', borderRadius: '10px', border: '1px solid rgba(34, 197, 94, 0.2)' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-green)' }}>
+                                  <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: 'var(--color-green)', boxShadow: '0 0 8px var(--color-green)' }}></span>
+                                  Connected to GitHub
+                                </span>
+                                <a href={`https://github.com/${githubRepo}`} target="_blank" rel="noreferrer" style={{ fontSize: '0.75rem', color: '#c084fc', textDecoration: 'none' }}>
+                                  View on GitHub <i className="fa-solid fa-arrow-up-right-from-square" style={{ fontSize: '0.65rem' }}></i>
+                                </a>
                               </div>
-                              <button type="button" onClick={handleDisconnectGithub} className="btn btn-secondary btn-full" style={{ padding: '6px 12px' }}>
+                              
+                              <div style={{ fontSize: '1rem', fontWeight: 'bold', fontFamily: 'Outfit' }}>
+                                {githubRepo}
+                              </div>
+
+                              {latestCommit && (
+                                <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '12px', marginTop: '4px' }}>
+                                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                                    Latest Commit on branch (main)
+                                  </div>
+                                  <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                                    {latestCommit.authorAvatar ? (
+                                      <img src={latestCommit.authorAvatar} alt="avatar" style={{ width: '32px', height: '32px', borderRadius: '50%', border: '1px solid var(--border-color)' }} />
+                                    ) : (
+                                      <i className="fa-solid fa-circle-user" style={{ fontSize: '2rem', color: 'var(--text-muted)' }}></i>
+                                    )}
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {latestCommit.message}
+                                      </div>
+                                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                        By <strong>{latestCommit.authorName}</strong> on {new Date(latestCommit.date).toLocaleString()}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <span className="badge font-mono" style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.05)', color: 'var(--text-main)', padding: '2px 6px' }}>
+                                      {latestCommit.sha?.slice(0, 7)}
+                                    </span>
+                                    <a href={latestCommit.htmlUrl} target="_blank" rel="noreferrer" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textDecoration: 'none' }}>
+                                      View commit
+                                    </a>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              <button type="button" onClick={handleDisconnectGithub} className="btn btn-secondary btn-full" style={{ padding: '8px 12px', fontSize: '0.8rem', marginTop: '4px' }}>
                                 Disconnect Repository
                               </button>
                             </div>
