@@ -25,7 +25,8 @@ export class GeminiService {
   public static async generateContent(
     prompt: string,
     systemPrompt: string = '',
-    customApiKey?: string
+    customApiKey?: string,
+    allowMockFallback: boolean = true
   ): Promise<GenerateResponse> {
     const primaryKey = customApiKey || process.env.GEMINI_API_KEY || '';
     
@@ -66,6 +67,15 @@ export class GeminiService {
 
     // If all failed, check if we want to return a fallback mock demo report instead of error
     // To ensure demo mode never fails, we generate a highly-structured mock report dynamically
+    if (!allowMockFallback) {
+      return {
+        text: 'Error: Unable to process LLM request after attempting fallback keys and model types.',
+        modelUsed: 'N/A',
+        keyUsed: 'N/A',
+        error: lastError?.message || 'Unknown network error'
+      };
+    }
+
     const promptLower = prompt.toLowerCase();
     if (promptLower.includes('release version') || promptLower.includes('telemetry and health') || promptLower.includes('computed total risk')) {
       const versionMatch = prompt.match(/version:\s*([^\s\n\.]+)/);

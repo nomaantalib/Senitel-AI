@@ -83,6 +83,9 @@ export default function App() {
     type: getInitialConnected() ? 'success' : 'warn'
   });
   const [githubConnected, setGithubConnected] = useState<boolean>(getInitialConnected);
+  const [githubTokenInput, setGithubTokenInput] = useState<string>(() => {
+    return localStorage.getItem('sentinel_github_token') || '';
+  });
 
   // Feature 1: Pre-Deployment Risk Analyzer
   const [releaseVersion, setReleaseVersion] = useState<string>('v4.2');
@@ -252,7 +255,8 @@ export default function App() {
     return {
       mode: isDemo ? 'demo' : 'live',
       apiKey: userApiKey.trim() || undefined,
-      githubRepo: !isDemo && githubConnected ? githubRepo : undefined
+      githubRepo: !isDemo && githubConnected ? githubRepo : undefined,
+      githubToken: !isDemo && githubConnected && githubTokenInput.trim() ? githubTokenInput.trim() : undefined
     };
   };
 
@@ -283,7 +287,13 @@ export default function App() {
     setGithubMsg({ text: `Locating repository: ${repoVal}...`, type: 'info' });
 
     try {
-      const response = await fetch(`https://api.github.com/repos/${repoVal}`);
+      const headers: Record<string, string> = {
+        'User-Agent': 'sentinel-ai-devops-guardian'
+      };
+      if (githubTokenInput.trim()) {
+        headers['Authorization'] = `token ${githubTokenInput.trim()}`;
+      }
+      const response = await fetch(`https://api.github.com/repos/${repoVal}`, { headers });
       if (response.ok) {
         setGithubRepo(repoVal);
         setGithubConnected(true);
@@ -321,9 +331,11 @@ export default function App() {
     setGithubRepo('');
     setGithubConnected(false);
     setGithubInput('');
+    setGithubTokenInput('');
     setGithubMsg(null);
     localStorage.removeItem('sentinel_connected_repo');
     localStorage.removeItem('sentinel_github_connected');
+    localStorage.removeItem('sentinel_github_token');
   };
 
   // Feature 1 Audit function
@@ -987,15 +999,30 @@ export default function App() {
                             </div>
                           ) : (
                             <form onSubmit={handleConnectGithub}>
-                              <div className="form-group" style={{ marginBottom: '12px' }}>
-                                <input
-                                  type="text"
-                                  placeholder="e.g. owner/repository"
-                                  value={githubInput}
-                                  onChange={(e) => setGithubInput(e.target.value)}
-                                  disabled={isGithubVerifying}
-                                />
-                              </div>
+                               <div className="form-group" style={{ marginBottom: '10px' }}>
+                                 <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Repository URL or owner/name</label>
+                                 <input
+                                   type="text"
+                                   placeholder="e.g. owner/repository"
+                                   value={githubInput}
+                                   onChange={(e) => setGithubInput(e.target.value)}
+                                   disabled={isGithubVerifying}
+                                 />
+                                </div>
+                                <div className="form-group" style={{ marginBottom: '14px' }}>
+                                  <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>GitHub Personal Access Token (Optional)</label>
+                                  <input
+                                    type="password"
+                                    placeholder="Enter GitHub PAT (Required for private repositories)"
+                                    value={githubTokenInput}
+                                    onChange={(e) => {
+                                      setGithubTokenInput(e.target.value);
+                                      localStorage.setItem('sentinel_github_token', e.target.value);
+                                    }}
+                                    disabled={isGithubVerifying}
+                                    autoComplete="new-password"
+                                  />
+                                </div>
                               <div style={{ display: 'flex', gap: '10px' }}>
                                 <button type="submit" className="btn btn-primary" style={{ flex: 1 }} disabled={isGithubVerifying}>
                                   {isGithubVerifying ? 'Locating...' : 'Connect Repo'}

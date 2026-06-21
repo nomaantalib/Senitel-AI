@@ -167,7 +167,7 @@ ${riskAnalysis.reasons.map(r => `  * ${r}`).join('\n')}
 Please generate a deployment guard report based on this telemetry. Explain why the risk score is at ${riskAnalysis.totalRisk}% and outline the best path forward (e.g. Canary strategy, delay deployment, or normal rolling).`;
 
   // 4. Request analysis from Gemini (with fallback handling)
-  const aiResult = await GeminiService.generateContent(userPrompt, systemPrompt, apiKey);
+  const aiResult = await GeminiService.generateContent(userPrompt, systemPrompt, apiKey, isDemo);
 
   res.json({
     version,
@@ -196,6 +196,7 @@ Please generate a deployment guard report based on this telemetry. Explain why t
  */
 app.post('/api/explain-outage', async (req, res) => {
   const { query = 'Friday outage', mode = 'demo', apiKey } = req.body;
+  const isDemo = mode === 'demo';
 
   // Retrieve matching incident
   let incidents: any[] = [];
@@ -232,7 +233,7 @@ Resolution: ${searchIncident.resolution}
 
 Generate an analytical incident autopsy report explaining the cascading failure chain and recommended safeguards to prevent recurrence.`;
 
-  const aiResult = await GeminiService.generateContent(userPrompt, systemPrompt, apiKey);
+  const aiResult = await GeminiService.generateContent(userPrompt, systemPrompt, apiKey, isDemo);
 
   res.json({
     incidentId: searchIncident._id,
@@ -253,12 +254,13 @@ Generate an analytical incident autopsy report explaining the cascading failure 
  * Endpoint to get deployment advice
  */
 app.post('/api/deployment-advice', async (req, res) => {
-  const { service = 'checkout-service', apiKey } = req.body;
+  const { service = 'checkout-service', mode = 'demo', apiKey } = req.body;
+  const isDemo = mode === 'demo';
 
   const systemPrompt = `You are Sentinel AI Release Advisor. Provide tactical deployment strategies (e.g. Canary, Blue-Green, Rolling) and safety checks for the specified service. Use tables or lists in markdown to outline traffic split schedules and expected risk reduction percentages.`;
   const userPrompt = `Provide strategic deployment advice for deploying updates to "${service}". The current environment has memory warnings and a history of database connection pool exhaustion. Provide traffic splits (10%, 25%, 50%, 100%) and validation tests.`;
 
-  const aiResult = await GeminiService.generateContent(userPrompt, systemPrompt, apiKey);
+  const aiResult = await GeminiService.generateContent(userPrompt, systemPrompt, apiKey, isDemo);
 
   res.json({
     service,
@@ -275,7 +277,8 @@ app.post('/api/deployment-advice', async (req, res) => {
  * Endpoint to investigate service root causes
  */
 app.post('/api/investigate', async (req, res) => {
-  const { service = 'checkout-service', apiKey } = req.body;
+  const { service = 'checkout-service', mode = 'demo', apiKey } = req.body;
+  const isDemo = mode === 'demo';
 
   const tickets = db.getJiraTickets().filter(t => t.service === service);
   const metrics = db.getPrometheusMetrics()[service];
@@ -294,7 +297,7 @@ ${tickets.map(t => `- [${t.id}] ${t.summary} (${t.priority})`).join('\n')}
 
 Identify the root cause probability, provide specific evidence logs, and list previous matching incident files.`;
 
-  const aiResult = await GeminiService.generateContent(userPrompt, systemPrompt, apiKey);
+  const aiResult = await GeminiService.generateContent(userPrompt, systemPrompt, apiKey, isDemo);
 
   res.json({
     service,
